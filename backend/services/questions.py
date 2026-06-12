@@ -58,27 +58,9 @@ async def ai_generate_questions(subject: str, count: int = 5) -> List[dict]:
         return []
     count = min(count, remaining)
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"neet-gen-{uuid.uuid4().hex[:8]}",
-            system_message=(
-                "You are a NEET exam question generator. Output ONLY valid JSON array. "
-                "Each item: {\"question\": str, \"options\": [4 strings], \"correct\": 0-3 index, \"explanation\": str, \"chapter\": str}. "
-                "Questions must be NEET-syllabus level, accurate, single best answer."
-            ),
-        ).with_model("anthropic", "claude-sonnet-4-6")
-
-        prompt = (
-            f"Generate {count} unique NEET MCQ questions for subject: {subject.upper()}. "
-            "Return ONLY the JSON array, no markdown, no preamble."
-        )
-        resp = await chat.send_message(UserMessage(text=prompt))
-        text = resp if isinstance(resp, str) else str(resp)
-        m = re.search(r"\[.*\]", text, re.DOTALL)
-        if not m:
-            return []
-        items = json.loads(m.group(0))
+        # AI generation disabled - emergentintegrations not available
+        return []
+        items = []
         docs = []
         for item in items:
             if not isinstance(item.get("options"), list) or len(item["options"]) != 4:
