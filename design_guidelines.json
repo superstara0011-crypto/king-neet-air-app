@@ -1,0 +1,110 @@
+{
+  "theme": "dark",
+  "archetype": "7 (Electric & Neon) combined with 2 (Performance Pro)",
+  "vibe": "Gamified, high-energy, competitive, modern tech, dark mode with neon accents",
+  "colors": {
+    "background": {
+      "base": "#050805",
+      "surface": "#0a110a",
+      "surface_glass": "rgba(255, 255, 255, 0.03)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1BBA1",
+      "muted": "#5B755B"
+    },
+    "primary": {
+      "main": "#39FF14",
+      "hover": "#4DFF2E",
+      "glow": "rgba(57, 255, 20, 0.4)"
+    },
+    "subjects": {
+      "biology": "#39FF14",
+      "physics": "#00F0FF",
+      "chemistry": "#B900FF"
+    },
+    "levels": {
+      "seed": "#88FF88",
+      "aspirant": "#00FFCC",
+      "scholar": "#00A3FF",
+      "warrior": "#B900FF",
+      "champion": "#FF007A",
+      "king_neet": "#FF3B30",
+      "air_legend": "#FFD700"
+    },
+    "borders": {
+      "default": "rgba(57, 255, 20, 0.15)",
+      "highlight": "rgba(57, 255, 20, 0.5)"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Unbounded, sans-serif",
+      "body": "Outfit, sans-serif",
+      "stats": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-black",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl tracking-tight font-bold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm tracking-wide text-secondary",
+      "overline": "text-xs uppercase tracking-[0.2em] font-bold"
+    }
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "Tailwind standard, but generous. p-6, p-8, p-12 for containers.",
+    "dashboard_grid": "grid-cols-1 lg:grid-cols-12 gap-6",
+    "card_padding": "p-6 sm:p-8",
+    "alignment": "Left-align mostly, center-align hero sections or empty states."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-black font-bold uppercase tracking-wider rounded-none px-6 py-3 hover:bg-primary-hover shadow-[0_0_15px_rgba(57,255,20,0.4)] transition-all active:scale-95",
+      "secondary": "bg-transparent text-white border border-primary/50 font-bold uppercase tracking-wider rounded-none px-6 py-3 hover:bg-primary/10 transition-all active:scale-95"
+    },
+    "cards": {
+      "glass": "bg-[#0a110a]/80 backdrop-blur-xl border border-primary/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden",
+      "solid": "bg-[#0a110a] border border-white/5 rounded-xl"
+    },
+    "badges": {
+      "level": "inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border drop-shadow-[0_0_8px_var(--tw-shadow-color)]"
+    },
+    "progress_bar": {
+      "track": "h-3 bg-white/5 rounded-full overflow-hidden",
+      "fill": "h-full bg-primary shadow-[0_0_10px_rgba(57,255,20,0.8)] rounded-full transition-all duration-500 ease-out"
+    }
+  },
+  "motion_and_interactions": {
+    "hover": "Scale up slightly (scale-105), increase glow intensity, brighten borders.",
+    "transitions": "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    "page_load": "Staggered fade-up for dashboard widgets and list items."
+  },
+  "image_urls": {
+    "hero_background": {
+      "url": "https://images.pexels.com/photos/26765065/pexels-photo-26765065.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Diagonal green binary code lines creating a digital matrix effect. Use with a heavy black overlay (bg-black/80) so it just feels like texture.",
+      "category": "background"
+    },
+    "avatars": {
+      "url_1": "https://images.unsplash.com/photo-1725273500428-834460c1157e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxzdHVkZW50JTIwZ2FtZXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODEyNDQxODV8MA&ixlib=rb-4.1.0&q=85",
+      "url_2": "https://images.unsplash.com/photo-1691239262060-601865609faf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwZ2FtZXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODEyNDQxODV8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Student gamer portraits for leaderboard avatars.",
+      "category": "user_avatar"
+    },
+    "trophy": {
+      "url": "https://images.pexels.com/photos/6532364/pexels-photo-6532364.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Golden trophies for AIR Legend level or all-time leaderboard winner.",
+      "category": "badge_icon"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install Google Fonts 'Unbounded', 'Outfit', and 'JetBrains Mono'. Use JetBrains Mono exclusively for XP numbers, ranks, and stats.",
+    "Use Phosphor icons (@phosphor-icons/react) with duotone or bold weights to match the chunky tech feel.",
+    "Implement the background using a deep `#050805` color. Do not use pure black. Avoid light gray text, use `#A1BBA1` for muted text so it stays in the green color space.",
+    "For the Level Badges, use CSS custom properties or dynamic inline styles for the drop-shadow so the glow color changes dynamically based on the level tier.",
+    "Always apply a `data-testid` to interactive elements (e.g., `data-testid=\"start-quiz-btn\"`, `data-testid=\"leaderboard-tab-daily\"`).",
+    "Use a subtle grain texture (`url(/noise.png)` or an SVG filter) over the whole app to give it a gritty, tactical gaming feel rather than a flat digital look.",
+    "Cards should NOT have white backgrounds. Use `#0a110a` with a 1px border of `rgba(57, 255, 20, 0.15)`."
+  ]
+}
