@@ -42,6 +42,7 @@ function AppRouter() {
     return (
         <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
             <Route path="/play" element={<Protected><Play /></Protected>} />
             <Route path="/play/:mode" element={<Protected><ModeSelect /></Protected>} />
