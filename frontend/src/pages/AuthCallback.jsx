@@ -13,14 +13,16 @@ export default function AuthCallback() {
         if (hasProcessed.current) return;
         hasProcessed.current = true;
         (async () => {
-            const hash = loc.hash || window.location.hash;
-            const m = hash.match(/session_id=([^&]+)/);
-            if (!m) { nav("/"); return; }
-            const session_id = decodeURIComponent(m[1]);
+            // Get code from URL params (Google OAuth returns ?code=...)
+            const params = new URLSearchParams(loc.search);
+            const code = params.get("code");
+            const state = params.get("state");
+            
+            if (!code) { nav("/"); return; }
+
             try {
-                const r = await api.post("/auth/session", { session_id });
+                const r = await api.post("/auth/google/callback", { code, state });
                 setUser(r.data.user);
-                // Clear the hash and refetch to get level info
                 window.history.replaceState(null, "", "/dashboard");
                 try {
                     const me = await api.get("/auth/me");
@@ -38,7 +40,7 @@ export default function AuthCallback() {
         <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-[#39FF14]/30 border-t-[#39FF14] animate-spin" />
-                <p className="font-mono text-sm uppercase tracking-widest text-[#39FF14]">Authenticating…</p>
+                <p className="font-mono text-sm uppercase tracking-widest text-[#39FF14]">Signing in with Google…</p>
             </div>
         </div>
     );

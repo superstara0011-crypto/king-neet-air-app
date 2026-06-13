@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, Trophy, Sparkles, BookOpen, Zap, Target } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { API } from "@/lib/api";
 
 export default function Landing() {
     const nav = useNavigate();
@@ -11,10 +12,17 @@ export default function Landing() {
         if (!loading && user) nav("/dashboard");
     }, [user, loading, nav]);
 
-    const handleLogin = () => {
-        // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-        const redirectUrl = window.location.origin + "/dashboard";
-        window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    const handleLogin = async () => {
+        try {
+            const resp = await fetch(`${API}/auth/google/url`);
+            const data = await resp.json();
+            if (data.url) {
+                sessionStorage.setItem("oauth_state", data.state);
+                window.location.href = data.url;
+            }
+        } catch (e) {
+            console.error("Login failed", e);
+        }
     };
 
     const levelTeasers = [
@@ -27,7 +35,6 @@ export default function Landing() {
 
     return (
         <div className="min-h-screen flex flex-col">
-            {/* NAV */}
             <header className="px-4 sm:px-8 py-5 flex items-center justify-between border-b border-[#39FF14]/15 backdrop-blur">
                 <div className="flex items-center gap-2">
                     <Crown className="w-6 h-6 text-[#39FF14]" />
@@ -35,12 +42,11 @@ export default function Landing() {
                         KING NEET <span className="text-[#39FF14] glow-text">AIR</span>
                     </span>
                 </div>
-                <button onClick={handleLogin} className="neon-btn-ghost text-xs sm:text-sm" data-testid="header-login-btn">
+                <button onClick={handleLogin} className="neon-btn-ghost text-xs sm:text-sm">
                     Sign in
                 </button>
             </header>
 
-            {/* HERO */}
             <main className="relative flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-12 lg:py-20 grid lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7 fade-up">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#39FF14]/30 bg-[#39FF14]/5 mb-6">
@@ -58,7 +64,7 @@ export default function Landing() {
                     </p>
 
                     <div className="mt-8 flex flex-wrap gap-4">
-                        <button onClick={handleLogin} className="neon-btn" data-testid="hero-login-btn">
+                        <button onClick={handleLogin} className="neon-btn">
                             Continue with Google →
                         </button>
                         <a href="#how" className="neon-btn-ghost">How it works</a>
@@ -93,7 +99,6 @@ export default function Landing() {
                 </div>
             </main>
 
-            {/* HOW */}
             <section id="how" className="max-w-7xl w-full mx-auto px-4 sm:px-8 py-16 border-t border-[#39FF14]/10">
                 <h2 className="font-heading text-3xl sm:text-4xl font-black mb-10">How it works</h2>
                 <div className="grid sm:grid-cols-3 gap-6">
