@@ -25,10 +25,20 @@ async def root():
 
 app.include_router(api_router)
 
+# Fix: CORS_ORIGINS must be explicit (not *) when allow_credentials=True
+cors_origins_raw = os.environ.get('CORS_ORIGINS', 'https://king-neet-air-app.vercel.app')
+if cors_origins_raw.strip() == '*':
+    cors_origins = [
+        "https://king-neet-air-app.vercel.app",
+        "http://localhost:3000",
+    ]
+else:
+    cors_origins = [o.strip() for o in cors_origins_raw.split(',')]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
