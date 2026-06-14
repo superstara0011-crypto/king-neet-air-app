@@ -8,16 +8,17 @@ class User(BaseModel):
     email: str
     name: str
     picture: Optional[str] = ""
-    username: Optional[str] = None  # @handle
+    username: Optional[str] = None
     total_xp: int = 0
     questions_answered: int = 0
     correct_answers: int = 0
     chapters_completed: List[str] = []
-    daily_challenges_completed: List[str] = []  # ISO date strings
+    daily_challenges_completed: List[str] = []
     is_admin: bool = False
+    admin_role: Optional[str] = ""  # super_admin, content_admin, analytics_admin, test_admin
     streak: int = 0
     longest_streak: int = 0
-    last_active_date: Optional[str] = None  # ISO date string
+    last_active_date: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -34,6 +35,7 @@ class QuestionIn(BaseModel):
     explanation: str = ""
     is_pyq: bool = False
     year: Optional[int] = None
+    image_url: Optional[str] = ""  # ✅ Image/Diagram support
 
 
 class AIGenerateRequest(BaseModel):
@@ -49,6 +51,7 @@ class QuestionOut(BaseModel):
     options: List[str]
     is_pyq: bool = False
     year: Optional[int] = None
+    image_url: Optional[str] = ""  # ✅ Image support
 
 
 class AnswerSubmit(BaseModel):
@@ -70,3 +73,17 @@ class QuizResult(BaseModel):
     level: dict
     streak: int
     details: List[dict]
+
+
+class NoteIn(BaseModel):
+    subject: Literal["biology", "physics", "chemistry"]
+    chapter: str
+    title: str
+    content: str = ""
+    type: str = "text"  # text, mindmap, diagram, formula, ncert
+    image_url: Optional[str] = ""  # ✅ Image support for notes
+
+
+class AdminUserIn(BaseModel):
+    email: str
+    role: str = "content_admin"
