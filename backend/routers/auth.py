@@ -13,20 +13,15 @@ from services.premium import get_top_user_ids
 
 router = APIRouter()
 
-GOOGLE_CLIENT_ID = None  # Set via env var GOOGLE_CLIENT_ID
-
 @router.get("/auth/google/url")
 async def google_auth_url(request: Request):
-    """Return Google OAuth URL for frontend to redirect to."""
     import os
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
     if not client_id:
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
-    
     redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", "")
     scope = "openid email profile"
     state = uuid.uuid4().hex
-    
     url = (
         f"https://accounts.google.com/o/oauth2/v2/auth"
         f"?client_id={client_id}"
@@ -41,7 +36,6 @@ async def google_auth_url(request: Request):
 
 @router.post("/auth/google/callback")
 async def google_callback(request: Request, response: Response):
-    """Exchange Google auth code for user session."""
     import os
     body = await request.json()
     code = body.get("code")
@@ -52,7 +46,6 @@ async def google_callback(request: Request, response: Response):
     client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "")
     redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", "")
 
-    # Exchange code for tokens
     async with httpx.AsyncClient() as http:
         token_resp = await http.post(
             "https://oauth2.googleapis.com/token",
@@ -66,18 +59,14 @@ async def google_callback(request: Request, response: Response):
         )
         if token_resp.status_code != 200:
             raise HTTPException(status_code=401, detail="Failed to exchange code")
-        
         tokens = token_resp.json()
         access_token = tokens.get("access_token")
-        
-        # Get user info from Google
         userinfo_resp = await http.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
             headers={"Authorization": f"Bearer {access_token}"}
         )
         if userinfo_resp.status_code != 200:
             raise HTTPException(status_code=401, detail="Failed to get user info")
-        
         google_user = userinfo_resp.json()
 
     email = google_user.get("email")
@@ -87,14 +76,27 @@ async def google_callback(request: Request, response: Response):
     if not email:
         raise HTTPException(status_code=401, detail="No email from Google")
 
-    is_admin = email.lower() in ADMIN_EMAILS
+    # ✅ Check if email is in ADMIN_EMAILS config
+    is_admin_by_config = email.lower() in ADMIN_EMAILS
+
     existing = await db.users.find_one({"email": email}, {"_id": 0})
 
     if existing:
         user_id = existing["user_id"]
+        # ✅ Only set is_admin True from config — never overwrite True with False!
+        update_fields = {"name": name, "picture": picture}
+        if is_admin_by_config:
+            update_fields["is_admin"] = True
+            update_fields["admin_role"] = "super_admin"
+        # If already admin in DB, keep it
+        elif existing.get("is_admin"):
+            pass  # Don't touch is_admin
+        else:
+            update_fields["is_admin"] = False
+
         await db.users.update_one(
             {"user_id": user_id},
-            {"$set": {"name": name, "picture": picture, "is_admin": is_admin}},
+            {"$set": update_fields},
         )
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
@@ -115,7 +117,8 @@ async def google_callback(request: Request, response: Response):
             "correct_answers": 0,
             "chapters_completed": [],
             "daily_challenges_completed": [],
-            "is_admin": is_admin,
+            "is_admin": is_admin_by_config,
+            "admin_role": "super_admin" if is_admin_by_config else "",
             "streak": 0,
             "longest_streak": 0,
             "last_active_date": None,
@@ -160,6 +163,10 @@ async def auth_me(request: Request):
 @router.post("/auth/logout")
 async def auth_logout(request: Request, response: Response):
     token = request.cookies.get("session_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
     if token:
         await db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie("session_token", path="/")
