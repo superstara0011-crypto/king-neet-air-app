@@ -13,21 +13,27 @@ export default function AuthCallback() {
         if (hasProcessed.current) return;
         hasProcessed.current = true;
         (async () => {
-            // Get code from URL params (Google OAuth returns ?code=...)
             const params = new URLSearchParams(loc.search);
             const code = params.get("code");
             const state = params.get("state");
-            
+
             if (!code) { nav("/"); return; }
 
             try {
                 const r = await api.post("/auth/google/callback", { code, state });
+                
+                // ✅ Save session token in localStorage
+                if (r.data.session_token) {
+                    localStorage.setItem("session_token", r.data.session_token);
+                }
+                
                 setUser(r.data.user);
-                window.history.replaceState(null, "", "/dashboard");
+                
                 try {
                     const me = await api.get("/auth/me");
                     setUser(me.data);
                 } catch {}
+                
                 nav("/dashboard", { replace: true });
             } catch (e) {
                 console.error(e);

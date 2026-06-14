@@ -8,6 +8,15 @@ export const api = axios.create({
     withCredentials: true,
 });
 
+// ✅ Automatically attach session token from localStorage to every request
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem("session_token");
+    if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    return config;
+});
+
 export const LEVEL_COLORS = {
     "Seed": "#88FF88",
     "Aspirant": "#00FFCC",

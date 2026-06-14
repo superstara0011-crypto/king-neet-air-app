@@ -15,15 +15,17 @@ export function AuthProvider({ children }) {
             setUser(r.data);
         } catch (e) {
             setUser(null);
+            // ✅ Clear token if session expired
+            if (e.response?.status === 401) {
+                localStorage.removeItem("session_token");
+            }
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        // CRITICAL: If returning from OAuth callback, skip the /me check.
-        // AuthCallback will exchange the session_id and establish the session first.
-        if (window.location.hash?.includes("session_id=")) {
+        if (window.location.pathname === "/auth/callback") {
             setLoading(false);
             return;
         }
@@ -36,6 +38,8 @@ export function AuthProvider({ children }) {
         } catch (err) {
             console.warn("logout request failed", err);
         }
+        // ✅ Clear token on logout
+        localStorage.removeItem("session_token");
         setUser(null);
     };
 
