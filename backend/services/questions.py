@@ -82,7 +82,7 @@ Rules:
 - Return ONLY the JSON array, nothing else"""
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
         
         async with httpx.AsyncClient(timeout=60) as http:
             resp = await http.post(
