@@ -1,306 +1,312 @@
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import LevelBadge from "@/components/LevelBadge";
+import { Trophy, Zap, BookOpen, Target, Clock, TrendingUp, Star, Flame } from "lucide-react";
 
-const COLORS = {
-  bg: "#080C1A",
-  card: "#0D1226",
-  border: "#1A2040",
-  green: "#39FF14",
-  purple: "#7C3AED",
-  blue: "#2563EB",
-  gold: "#FFD700",
-  red: "#FF3B30",
-  text: "#E2E8F0",
-  muted: "#64748B",
-};
+// Privacy: Initials avatar
+function Avatar({ name, size = 10 }) {
+    const initials = name ? name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : "?";
+    const colors = ["#7C3AED", "#2563EB", "#059669", "#DC2626", "#D97706", "#DB2777"];
+    const idx = name ? name.charCodeAt(0) % colors.length : 0;
+    return (
+        <div className={`w-${size} h-${size} rounded-full flex items-center justify-center font-black text-white border-2 border-white/20`}
+            style={{ background: colors[idx], fontSize: size > 8 ? 16 : 12 }}>
+            {initials}
+        </div>
+    );
+}
 
-const user = {
-  name: "Aditya Raj",
-  username: "super_star_",
-  picture: "https://ui-avatars.com/api/?name=Aditya+Raj&background=7C3AED&color=fff&size=96",
-  xp: 4280,
-  level: "Scholar",
-  streak: 7,
-  rank: 42,
-  accuracy: 76,
-};
-
-const subjects = [
-  { name: "Biology", icon: "🧬", color: "#39FF14", chapters: 38, done: 14, questions: 18000 },
-  { name: "Physics", icon: "⚛️", color: "#00F0FF", chapters: 29, done: 8, questions: 15000 },
-  { name: "Chemistry", icon: "🧪", color: "#B900FF", chapters: 30, done: 11, questions: 14000 },
+const PLAY_MODES = [
+    { id: "pyq", path: "/play/pyq", icon: "📜", label: "PYQ Practice", desc: "2015–2024 papers", color: "#FFD700", bg: "rgba(255,215,0,0.08)" },
+    { id: "daily", path: "/play/daily_quiz", icon: "⚡", label: "Daily Challenge", desc: "+4 XP per correct • Streak bonus", color: "#39FF14", bg: "rgba(57,255,20,0.08)", badge: "TODAY" },
+    { id: "mock", path: "/play/mock_test", icon: "🎯", label: "Mock Test", desc: "180 Qs • 3 Hours • NEET Pattern", color: "#00F0FF", bg: "rgba(0,240,255,0.08)" },
+    { id: "chapter", path: "/play/chapter", icon: "📖", label: "Chapter Quiz", desc: "+2 XP per correct", color: "#B900FF", bg: "rgba(185,0,255,0.08)" },
 ];
 
-const modes = [
-  { id: "pyq", icon: "📜", label: "PYQ Practice", desc: "2015–2024 papers", color: "#FFD700", bg: "rgba(255,215,0,0.08)" },
-  { id: "daily", icon: "⚡", label: "Daily Challenge", desc: "Streak bonus +10 XP", color: "#39FF14", bg: "rgba(57,255,20,0.08)", badge: "TODAY" },
-  { id: "mock", icon: "🎯", label: "Mock Test", desc: "180 Qs • 3 Hours", color: "#00F0FF", bg: "rgba(0,240,255,0.08)" },
-  { id: "chapter", icon: "📖", label: "Chapter Quiz", desc: "Topic-wise practice", color: "#B900FF", bg: "rgba(185,0,255,0.08)" },
+const SUBJECTS = [
+    { name: "Biology", icon: "🧬", color: "#39FF14", path: "/play/chapter?subject=biology" },
+    { name: "Physics", icon: "⚛️", color: "#00F0FF", path: "/play/chapter?subject=physics" },
+    { name: "Chemistry", icon: "🧪", color: "#B900FF", path: "/play/chapter?subject=chemistry" },
 ];
 
-const topRankers = [
-  { rank: 1, name: "neet_king", xp: 52680, level: "AIR LEGEND", avatar: "NK" },
-  { rank: 2, name: "bio_master", xp: 41230, level: "KING NEET", avatar: "BM" },
-  { rank: 3, name: "physics_pro", xp: 38750, level: "KING NEET", avatar: "PP" },
-  { rank: 4, name: "dr_surgical", xp: 29420, level: "Champion", avatar: "DS" },
-  { rank: 5, name: "chem_legend", xp: 27890, level: "Champion", avatar: "CL" },
-];
+export default function Dashboard() {
+    const { user } = useAuth();
+    const nav = useNavigate();
+    const [leaderboard, setLeaderboard] = useState([]);
+    const [history, setHistory] = useState([]);
+    const [dailyDone, setDailyDone] = useState(false);
 
-const recentActivity = [
-  { icon: "⚡", text: "Daily Challenge completed", xp: "+14 XP", time: "2h ago", color: "#39FF14" },
-  { icon: "📖", text: "Cell Biology chapter done", xp: "+10 XP", time: "5h ago", color: "#00F0FF" },
-  { icon: "🎯", text: "Mock Test #12 — 142/180", xp: "+88 XP", time: "1d ago", color: "#FFD700" },
-  { icon: "🔥", text: "7-day streak achieved!", xp: "+50 XP", time: "1d ago", color: "#FF3B30" },
-];
+    useEffect(() => {
+        api.get("/leaderboard?limit=5").then(r => setLeaderboard(r.data?.slice(0, 5) || [])).catch(() => {});
+        api.get("/quiz/history?limit=5").then(r => setHistory(r.data || [])).catch(() => {});
+        // Check if daily challenge done today
+        const today = new Date().toISOString().split("T")[0];
+        if (user?.daily_challenges_completed?.includes(today)) setDailyDone(true);
+    }, [user]);
 
-const levelPath = [
-  { name: "Seed", emoji: "🌱", min: 0, max: 500, color: "#88FF88" },
-  { name: "Aspirant", emoji: "⚡", min: 500, max: 1500, color: "#00FFCC" },
-  { name: "Scholar", emoji: "🎓", min: 1500, max: 5000, color: "#00A3FF" },
-  { name: "Warrior", emoji: "⚔️", min: 5000, max: 10000, color: "#B900FF" },
-  { name: "Champion", emoji: "🏆", min: 10000, max: 20000, color: "#FF007A" },
-  { name: "KING NEET", emoji: "👑", min: 20000, max: 50000, color: "#FF3B30" },
-  { name: "AIR LEGEND", emoji: "🌟", min: 50000, max: 999999, color: "#FFD700" },
-];
+    if (!user) return null;
 
-const currentLevel = levelPath.find(l => user.xp >= l.min && user.xp < l.max);
-const xpProgress = ((user.xp - currentLevel.min) / (currentLevel.max - currentLevel.min)) * 100;
+    const level = user.level || {};
+    const xpProgress = level.progress ? Math.round(level.progress * 100) : 0;
+    const xpToNext = level.level_max - level.current_xp;
 
-export default function DashboardDesign() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [activeSub, setActiveSub] = useState(null);
+    return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-  return (
-    <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'Inter', sans-serif", display: "flex" }}>
-      
-      {/* SIDEBAR */}
-      <aside style={{ width: 220, background: COLORS.card, borderRight: `1px solid ${COLORS.border}`, display: "flex", flexDirection: "column", padding: "20px 0", position: "sticky", top: 0, height: "100vh" }}>
-        {/* Logo */}
-        <div style={{ padding: "0 20px 24px", borderBottom: `1px solid ${COLORS.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 22 }}>👑</span>
-            <span style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.5px" }}>
-              KING NEET <span style={{ color: COLORS.gold }}>AIR</span>
-            </span>
-          </div>
-        </div>
-
-        {/* User Card */}
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <img src={user.picture} alt="" style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${currentLevel.color}` }} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>@{user.username}</div>
-              <div style={{ fontSize: 11, color: currentLevel.color }}>{currentLevel.emoji} {currentLevel.name}</div>
-            </div>
-          </div>
-          {/* XP Bar */}
-          <div style={{ background: COLORS.border, borderRadius: 99, height: 5, overflow: "hidden" }}>
-            <div style={{ width: `${xpProgress}%`, height: "100%", background: currentLevel.color, borderRadius: 99, transition: "width 1s" }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-            <span style={{ fontSize: 10, color: COLORS.muted }}>{user.xp.toLocaleString()} XP</span>
-            <span style={{ fontSize: 10, color: COLORS.muted }}>{currentLevel.max.toLocaleString()} XP</span>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: "12px 12px" }}>
-          {[
-            { id: "dashboard", icon: "🏠", label: "Dashboard" },
-            { id: "practice", icon: "📚", label: "Practice" },
-            { id: "mock", icon: "🎯", label: "Mock Tests" },
-            { id: "notes", icon: "📝", label: "Notes" },
-            { id: "leaderboard", icon: "🏆", label: "Leaderboard" },
-            { id: "history", icon: "📊", label: "My Progress" },
-            { id: "profile", icon: "👤", label: "Profile" },
-          ].map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 2, border: "none", cursor: "pointer", background: activeTab === item.id ? `${COLORS.purple}22` : "transparent", color: activeTab === item.id ? "#fff" : COLORS.muted, fontWeight: activeTab === item.id ? 700 : 500, fontSize: 13, transition: "all 0.15s", borderLeft: activeTab === item.id ? `3px solid ${COLORS.purple}` : "3px solid transparent" }}>
-              <span>{item.icon}</span>{item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Streak */}
-        <div style={{ margin: "12px", padding: "12px", borderRadius: 12, background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.2)", textAlign: "center" }}>
-          <div style={{ fontSize: 24 }}>🔥</div>
-          <div style={{ fontWeight: 900, fontSize: 20, color: "#FF3B30" }}>{user.streak}</div>
-          <div style={{ fontSize: 11, color: COLORS.muted }}>Day Streak</div>
-        </div>
-      </aside>
-
-      {/* MAIN */}
-      <main style={{ flex: 1, padding: 28, overflowY: "auto" }}>
-        
-        {/* Top Bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 2 }}>Welcome back 👋</div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>Good Morning, {user.name.split(" ")[0]}!</h1>
-          </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.2)", fontSize: 13, fontWeight: 700, color: COLORS.gold }}>
-              👑 Premium
-            </div>
-            <div style={{ padding: "8px 16px", borderRadius: 10, background: COLORS.card, border: `1px solid ${COLORS.border}`, fontSize: 13, fontWeight: 700, color: COLORS.green }}>
-              🏅 Rank #{user.rank}
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
-          {[
-            { label: "Total XP", value: user.xp.toLocaleString(), icon: "⚡", color: COLORS.green },
-            { label: "Accuracy", value: `${user.accuracy}%`, icon: "🎯", color: "#00F0FF" },
-            { label: "Global Rank", value: `#${user.rank}`, icon: "🏅", color: COLORS.gold },
-            { label: "Day Streak", value: user.streak, icon: "🔥", color: "#FF3B30" },
-          ].map(s => (
-            <div key={s.label} style={{ background: COLORS.card, borderRadius: 16, padding: "18px 20px", border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: 20, marginBottom: 8 }}>{s.icon}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 24 }}>
-          <div>
-            {/* Play Modes */}
-            <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: 14, color: COLORS.muted, letterSpacing: 1, textTransform: "uppercase", fontSize: 11 }}>Choose Mode</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }}>
-              {modes.map(m => (
-                <button key={m.id} style={{ background: m.bg, border: `1px solid ${m.color}30`, borderRadius: 16, padding: "20px", textAlign: "left", cursor: "pointer", position: "relative", transition: "all 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
-                  onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-                  {m.badge && <span style={{ position: "absolute", top: 12, right: 12, background: m.color, color: "#000", fontSize: 9, fontWeight: 900, padding: "2px 6px", borderRadius: 99, letterSpacing: 1 }}>{m.badge}</span>}
-                  <div style={{ fontSize: 28, marginBottom: 10 }}>{m.icon}</div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#fff", marginBottom: 4 }}>{m.label}</div>
-                  <div style={{ fontSize: 12, color: COLORS.muted }}>{m.desc}</div>
-                </button>
-              ))}
+            {/* Welcome Header */}
+            <div className="flex items-center justify-between mb-8 fade-up">
+                <div>
+                    <p className="text-white/50 text-sm mb-1">Welcome back 👋</p>
+                    <h1 className="font-heading font-black text-3xl sm:text-4xl">
+                        {user.name?.split(" ")[0] || "Champion"}!
+                    </h1>
+                </div>
+                <div className="flex gap-3">
+                    {user.streak > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#FF3B30]/30 bg-[#FF3B30]/10">
+                            <Flame className="w-4 h-4 text-[#FF3B30]" />
+                            <span className="font-black text-[#FF3B30]">{user.streak} Day Streak</span>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Subjects */}
-            <h2 style={{ fontSize: 11, fontWeight: 800, marginBottom: 14, color: COLORS.muted, letterSpacing: 1, textTransform: "uppercase" }}>Subjects</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-              {subjects.map(s => (
-                <div key={s.name} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: "18px 20px", cursor: "pointer" }}
-                  onClick={() => setActiveSub(s.name)}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 24 }}>{s.icon}</span>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 15 }}>{s.name}</div>
-                        <div style={{ fontSize: 12, color: COLORS.muted }}>{s.questions.toLocaleString()}+ questions</div>
-                      </div>
+            {/* XP + Level Bar */}
+            <div className="glass-card p-5 mb-8 fade-up">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                        <Avatar name={user.name} size={12} />
+                        <div>
+                            <div className="font-bold text-lg">@{user.username}</div>
+                            <div className="flex items-center gap-2">
+                                <span style={{ color: level.color || "#39FF14" }} className="font-mono text-sm font-bold">
+                                    {level.emoji} {level.name}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: s.color }}>{s.done}/{s.chapters}</div>
-                      <div style={{ fontSize: 11, color: COLORS.muted }}>Chapters</div>
+                    <div className="text-right">
+                        <div className="font-mono text-2xl font-black text-[#39FF14]">{user.total_xp?.toLocaleString()} XP</div>
+                        <div className="font-mono text-xs text-white/40">{xpToNext?.toLocaleString()} XP to next level</div>
                     </div>
-                  </div>
-                  <div style={{ background: COLORS.border, borderRadius: 99, height: 6 }}>
-                    <div style={{ width: `${(s.done / s.chapters) * 100}%`, height: "100%", background: s.color, borderRadius: 99 }} />
-                  </div>
                 </div>
-              ))}
+                <div className="bg-white/10 rounded-full h-3 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${xpProgress}%`, background: level.color || "#39FF14", boxShadow: `0 0 10px ${level.color || "#39FF14"}` }} />
+                </div>
+                <div className="flex justify-between mt-1">
+                    <span className="font-mono text-xs text-white/40">{level.level_min?.toLocaleString()} XP</span>
+                    <span className="font-mono text-xs text-white/40">{xpProgress}%</span>
+                    <span className="font-mono text-xs text-white/40">{level.level_max?.toLocaleString()} XP</span>
+                </div>
             </div>
 
-            {/* Recent Activity */}
-            <h2 style={{ fontSize: 11, fontWeight: 800, marginBottom: 14, color: COLORS.muted, letterSpacing: 1, textTransform: "uppercase" }}>Recent Activity</h2>
-            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, overflow: "hidden" }}>
-              {recentActivity.map((a, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i < recentActivity.length - 1 ? `1px solid ${COLORS.border}` : "none" }}>
-                  <span style={{ fontSize: 18 }}>{a.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{a.text}</div>
-                    <div style={{ fontSize: 11, color: COLORS.muted }}>{a.time}</div>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: a.color }}>{a.xp}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* RIGHT SIDEBAR */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Daily Challenge Card */}
-            <div style={{ background: "linear-gradient(135deg, #1a2744, #0f1a35)", border: "1px solid rgba(57,255,20,0.2)", borderRadius: 20, padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 20 }}>⚡</span>
-                <span style={{ fontWeight: 800, fontSize: 13, color: COLORS.green }}>DAILY CHALLENGE</span>
-              </div>
-              <div style={{ fontSize: 14, color: COLORS.muted, marginBottom: 4 }}>Today's target</div>
-              <div style={{ fontWeight: 900, fontSize: 28, color: "#fff", marginBottom: 12 }}>20 Questions</div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "8px", textAlign: "center" }}>
-                  <div style={{ fontWeight: 800, color: COLORS.green }}>+14 XP</div>
-                  <div style={{ fontSize: 10, color: COLORS.muted }}>Reward</div>
-                </div>
-                <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "8px", textAlign: "center" }}>
-                  <div style={{ fontWeight: 800, color: "#FF3B30" }}>🔥 7</div>
-                  <div style={{ fontSize: 10, color: COLORS.muted }}>Streak</div>
-                </div>
-              </div>
-              <button style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: COLORS.green, color: "#000", fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
-                Start Challenge →
-              </button>
-            </div>
-
-            {/* Leaderboard */}
-            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>🏆</span>
-                  <span style={{ fontWeight: 800, fontSize: 13 }}>Top Rankers</span>
-                </div>
-                <span style={{ fontSize: 11, color: COLORS.purple, fontWeight: 700, cursor: "pointer" }}>View all →</span>
-              </div>
-              {topRankers.map((r, i) => (
-                <div key={r.rank} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: i < topRankers.length - 1 ? `1px solid ${COLORS.border}` : "none" }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, background: r.rank === 1 ? COLORS.gold : r.rank === 2 ? "#9CA3AF" : r.rank === 3 ? "#F97316" : COLORS.border, color: r.rank <= 3 ? "#000" : COLORS.muted }}>
-                    {r.rank}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12 }}>@{r.name}</div>
-                    <div style={{ fontSize: 10, color: COLORS.muted }}>{r.level}</div>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: 11, color: COLORS.gold }}>{r.xp.toLocaleString()} XP</div>
-                </div>
-              ))}
-              {/* Your rank */}
-              <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 12, background: `${COLORS.purple}22`, border: `1px solid ${COLORS.purple}44` }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ fontSize: 12, color: COLORS.muted }}>Your Rank</div>
-                  <div style={{ fontWeight: 900, fontSize: 14, color: COLORS.purple }}>#{user.rank}</div>
-                </div>
-                <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>+3 from yesterday 📈</div>
-              </div>
-            </div>
-
-            {/* Level Progress */}
-            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 20 }}>
-              <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 16 }}>🎓 Level Progress</div>
-              {levelPath.map((l, i) => {
-                const isActive = l.name === currentLevel.name;
-                const isDone = user.xp >= l.max;
-                return (
-                  <div key={l.name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, opacity: isDone || isActive ? 1 : 0.4 }}>
-                    <span style={{ fontSize: 16 }}>{l.emoji}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: isActive ? l.color : isDone ? l.color : COLORS.muted }}>{l.name}</div>
-                      <div style={{ fontSize: 10, color: COLORS.muted }}>{l.max >= 999999 ? "50k+" : `${l.min.toLocaleString()}–${l.max.toLocaleString()}`} XP</div>
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                {[
+                    { label: "Total XP", value: user.total_xp?.toLocaleString() || 0, icon: "⚡", color: "#39FF14" },
+                    { label: "Accuracy", value: `${user.questions_answered > 0 ? Math.round((user.correct_answers / user.questions_answered) * 100) : 0}%`, icon: "🎯", color: "#00F0FF" },
+                    { label: "Answered", value: user.questions_answered?.toLocaleString() || 0, icon: "📝", color: "#FFD700" },
+                    { label: "Streak", value: `🔥 ${user.streak || 0}`, icon: "", color: "#FF3B30" },
+                ].map(s => (
+                    <div key={s.label} className="glass-card p-4">
+                        <div className="text-xl mb-2">{s.icon}</div>
+                        <div className="font-mono text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
+                        <div className="font-mono text-xs text-white/40 uppercase tracking-widest mt-1">{s.label}</div>
                     </div>
-                    {isDone && <span style={{ fontSize: 14 }}>✅</span>}
-                    {isActive && <div style={{ width: 8, height: 8, borderRadius: "50%", background: l.color, boxShadow: `0 0 6px ${l.color}` }} />}
-                  </div>
-                );
-              })}
+                ))}
             </div>
-          </div>
+
+            <div className="grid lg:grid-cols-3 gap-8">
+                {/* LEFT — Play Modes + Subjects */}
+                <div className="lg:col-span-2 space-y-8">
+
+                    {/* XP System Info */}
+                    <div className="glass-card p-4 border border-[#39FF14]/20">
+                        <div className="font-mono text-xs uppercase tracking-widest text-[#39FF14] mb-2">⚡ XP System</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center">
+                            <div className="bg-white/5 rounded-lg p-2">
+                                <div className="font-black text-[#39FF14]">+4 XP</div>
+                                <div className="text-white/40">Live/Daily correct</div>
+                            </div>
+                            <div className="bg-white/5 rounded-lg p-2">
+                                <div className="font-black text-[#00F0FF]">+2 XP</div>
+                                <div className="text-white/40">Normal correct</div>
+                            </div>
+                            <div className="bg-white/5 rounded-lg p-2">
+                                <div className="font-black text-[#FF3B30]">-1 XP</div>
+                                <div className="text-white/40">Wrong answer</div>
+                            </div>
+                            <div className="bg-white/5 rounded-lg p-2">
+                                <div className="font-black text-[#FFD700]">+10 XP</div>
+                                <div className="text-white/40">Chapter bonus</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Play Modes */}
+                    <div>
+                        <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-3">Choose Mode</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {PLAY_MODES.map(m => (
+                                <button key={m.id}
+                                    onClick={() => nav(m.path)}
+                                    className="relative p-5 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    style={{ background: m.bg, borderColor: m.color + "30" }}>
+                                    {m.badge && (
+                                        <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full"
+                                            style={{ background: m.color, color: "#000" }}>{m.badge}</span>
+                                    )}
+                                    {dailyDone && m.id === "daily" && (
+                                        <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full bg-white/20">✅ DONE</span>
+                                    )}
+                                    <div className="text-2xl mb-2">{m.icon}</div>
+                                    <div className="font-bold text-sm text-white mb-1">{m.label}</div>
+                                    <div className="text-xs text-white/50">{m.desc}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Subjects */}
+                    <div>
+                        <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-3">Practice by Subject</p>
+                        <div className="grid grid-cols-3 gap-3">
+                            {SUBJECTS.map(s => (
+                                <button key={s.name} onClick={() => nav(s.path)}
+                                    className="glass-card p-4 text-center transition-all hover:scale-[1.03]"
+                                    style={{ borderColor: s.color + "30" }}>
+                                    <div className="text-3xl mb-2">{s.icon}</div>
+                                    <div className="font-bold text-sm" style={{ color: s.color }}>{s.name}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Recent History */}
+                    {history.length > 0 && (
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="font-mono text-xs uppercase tracking-widest text-white/40">Recent Activity</p>
+                                <Link to="/history" className="font-mono text-xs text-[#39FF14] hover:underline">View all →</Link>
+                            </div>
+                            <div className="glass-card overflow-hidden">
+                                {history.map((h, i) => (
+                                    <div key={i} className="flex items-center gap-4 px-5 py-3 border-b border-white/5 last:border-0">
+                                        <div className="text-lg">
+                                            {h.mode === "daily_quiz" ? "⚡" : h.mode === "mock_test" ? "🎯" : h.mode === "pyq" ? "📜" : "📖"}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-bold text-sm capitalize">{h.mode?.replace("_", " ")}</div>
+                                            <div className="font-mono text-xs text-white/40">
+                                                {h.correct}/{h.total} correct • {h.subject || "Mixed"}
+                                            </div>
+                                        </div>
+                                        <div className="font-mono text-sm font-black text-[#39FF14]">+{h.xp_earned} XP</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* RIGHT — Leaderboard + Daily */}
+                <div className="space-y-6">
+                    {/* Daily Challenge */}
+                    <div className="glass-card p-5 border border-[#39FF14]/25"
+                        style={{ background: "linear-gradient(135deg, rgba(57,255,20,0.05), rgba(0,0,0,0))" }}>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Zap className="w-4 h-4 text-[#39FF14]" />
+                            <span className="font-mono text-xs uppercase tracking-widest text-[#39FF14]">Daily Challenge</span>
+                            {dailyDone && <span className="text-xs font-bold text-[#39FF14]">✅ Done!</span>}
+                        </div>
+                        <div className="font-black text-2xl mb-1">20 Questions</div>
+                        <div className="text-white/40 text-sm mb-4">+4 XP per correct • Streak bonus</div>
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="bg-white/5 rounded-xl p-3 text-center">
+                                <div className="font-black text-[#39FF14]">+4 XP</div>
+                                <div className="text-xs text-white/40">Per Correct</div>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-3 text-center">
+                                <div className="font-black text-[#FF3B30]">🔥 {user.streak || 0}</div>
+                                <div className="text-xs text-white/40">Day Streak</div>
+                            </div>
+                        </div>
+                        <button onClick={() => nav("/play/daily_quiz")}
+                            className="w-full py-3 rounded-xl font-black text-sm text-black uppercase tracking-widest transition hover:opacity-90"
+                            style={{ background: dailyDone ? "#39FF1450" : "#39FF14", color: dailyDone ? "#39FF14" : "#000" }}>
+                            {dailyDone ? "✅ Completed" : "Start Challenge →"}
+                        </button>
+                    </div>
+
+                    {/* Mini Leaderboard */}
+                    <div className="glass-card p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Trophy className="w-4 h-4 text-[#FFD700]" />
+                                <span className="font-bold text-sm">Top Rankers</span>
+                            </div>
+                            <Link to="/leaderboard" className="font-mono text-xs text-[#39FF14] hover:underline">View all →</Link>
+                        </div>
+                        <div className="space-y-3">
+                            {leaderboard.map((r, i) => (
+                                <div key={r.user_id} className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0"
+                                        style={{ background: i === 0 ? "#FFD700" : i === 1 ? "#9CA3AF" : i === 2 ? "#F97316" : "#ffffff15", color: i < 3 ? "#000" : "#888" }}>
+                                        {i + 1}
+                                    </div>
+                                    {/* Privacy: Initials only */}
+                                    <Avatar name={r.name} size={8} />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-xs truncate">@{r.username}</div>
+                                        <div className="font-mono text-[10px] text-white/40">{r.level?.name}</div>
+                                    </div>
+                                    <div className="font-mono text-xs font-black text-[#FFD700] flex-shrink-0">
+                                        {(r.xp || r.total_xp || 0).toLocaleString()}
+                                    </div>
+                                </div>
+                            ))}
+                            {leaderboard.length === 0 && (
+                                <div className="text-center text-white/30 text-sm py-4">No data yet</div>
+                            )}
+                        </div>
+                        {/* Your rank */}
+                        <div className="mt-4 p-3 rounded-xl border border-[#7C3AED]/30 bg-[#7C3AED]/10">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-white/50">Your rank</span>
+                                <span className="font-black text-[#7C3AED]">Coming soon</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 14-Day Info */}
+                    <div className="glass-card p-4 border border-[#FFD700]/20">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Clock className="w-4 h-4 text-[#FFD700]" />
+                            <span className="font-bold text-sm text-[#FFD700]">14-Day Season</span>
+                        </div>
+                        <div className="text-xs text-white/50 space-y-1">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="w-3 h-3 text-[#39FF14]" />
+                                <span>Top 6 → Level UP ⬆️</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 text-center text-[#FFD700]">—</span>
+                                <span>Rank 7-8 → Same Level</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="w-3 h-3 text-[#FF3B30] rotate-180" />
+                                <span>Rank 9-12 → Level DOWN ⬇️</span>
+                            </div>
+                        </div>
+                        <Link to="/leaderboard" onClick={() => {}} className="block mt-3 text-center text-xs font-bold text-[#FFD700] hover:underline">
+                            View 14-Day Board →
+                        </Link>
+                    </div>
+                </div>
+            </div>
         </div>
-      </main>
-    </div>
-  );
+    );
 }

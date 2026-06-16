@@ -1,68 +1,99 @@
-"""Pure XP scoring helpers (no DB access)."""
-from datetime import date, timedelta
-
-from config import (
-    XP_PER_CORRECT, XP_PER_WRONG, CHAPTER_BONUS, DAILY_BONUS,
-)
+"""XP and scoring service — NEET style scoring"""
+from datetime import date, datetime, timezone
+from typing import List, Tuple
 
 
-def score_answers(answers: list, qmap: dict):
-    """Return (correct_count, details, chapter_correct dict)."""
+# ─── SCORING CONSTANTS ──────────────────────────────────────────────
+XP_CORRECT_LIVE = 4   # Daily challenge / live quiz
+XP_CORRECT_NORMAL = 2  # PYQ / chapter / mock test
+XP_WRONG = -1          # Wrong answer (same as NEET)
+XP_UNATTEMPTED = 0     # No negative for skipped
+CHAPTER_BONUS = 10     # Complete a chapter
+DAILY_BONUS = 10       # Complete daily challenge
+
+
+def base_xp(correct: int, wrong: int, mode: str = "normal") -> int:
+    """Calculate XP based on mode.
+    - live/daily_quiz: +4 per correct, -1 per wrong
+    - normal (pyq/chapter/mock): +2 per correct, -1 per wrong
+    """
+    per_correct = XP_CORRECT_LIVE if mode in ("daily_quiz", "live") else XP_CORRECT_NORMAL
+    return max(0, (correct * per_correct) + (wrong * XP_WRONG))
+
+
+def score_answers(answers, qmap: dict) -> Tuple[int, List[dict], dict]:
+    """Score quiz answers. Returns (correct_count, details, chapter_correct_map)"""
     correct_count = 0
-    details: list = []
-    chapter_correct: dict = {}
+    details = []
+    chapter_correct = {}
+
     for ans in answers:
-        qd = qmap.get(ans.question_id)
-        if not qd:
+        qid = ans.question_id
+        sel = ans.selected_option
+        doc = qmap.get(qid)
+        if not doc:
             continue
-        is_correct = int(ans.selected_option) == int(qd["correct"])
+
+        is_correct = sel == doc["correct"]
         if is_correct:
             correct_count += 1
-            chapter_correct[qd["chapter"]] = chapter_correct.get(qd["chapter"], 0) + 1
+            ch = doc.get("chapter", "")
+            chapter_correct[ch] = chapter_correct.get(ch, 0) + 1
+
         details.append({
-            "question_id": ans.question_id,
-            "question": qd["question"],
-            "options": qd["options"],
-            "correct": qd["correct"],
-            "selected": ans.selected_option,
+            "question_id": qid,
+            "question": doc.get("question", ""),
+            "selected": sel,
+            "correct": doc["correct"],
             "is_correct": is_correct,
-            "explanation": qd.get("explanation", ""),
+            "explanation": doc.get("explanation", ""),
+            "options": doc.get("options", []),
+            "image_url": doc.get("image_url", ""),
         })
+
     return correct_count, details, chapter_correct
 
 
-def base_xp(correct_count: int, wrong_count: int) -> int:
-    """+4 per correct, -1 per wrong, never below 0 for a single quiz."""
-    return max(0, correct_count * XP_PER_CORRECT + wrong_count * XP_PER_WRONG)
+def compute_chapter_bonus(qdocs: list, chapter_correct: dict, completed: list) -> Tuple[int, List[str]]:
+    """Award bonus XP for newly completed chapters."""
+    chapter_total = {}
+    for doc in qdocs:
+        ch = doc.get("chapter", "")
+        chapter_total[ch] = chapter_total.get(ch, 0) + 1
 
-
-def compute_chapter_bonus(qdocs: list, chapter_correct: dict, already_completed: list):
-    """Return (xp_bonus, newly_completed_chapters)."""
-    chapter_total: dict = {}
-    for qd in qdocs:
-        chapter_total[qd["chapter"]] = chapter_total.get(qd["chapter"], 0) + 1
-    newly_completed: list = []
-    for ch, total in chapter_total.items():
-        if chapter_correct.get(ch, 0) == total and ch not in already_completed:
+    newly_completed = []
+    bonus_xp = 0
+    for ch, cnt in chapter_correct.items():
+        total = chapter_total.get(ch, cnt)
+        if ch and ch not in completed and cnt >= max(1, total * 0.7):
             newly_completed.append(ch)
-    return len(newly_completed) * CHAPTER_BONUS, newly_completed
+            bonus_xp += CHAPTER_BONUS
+
+    return bonus_xp, newly_completed
 
 
-def compute_daily_bonus(correct_count: int, total_answers: int,
-                        already_done_dates: list, today: str):
-    """Daily bonus applies to ANY mode: pass at least half, once per day."""
-    if correct_count < max(1, total_answers // 2):
+def compute_daily_bonus(correct: int, total: int, completed_dates: list, today: str) -> Tuple[int, bool]:
+    """Award daily challenge bonus if not already completed today."""
+    if today in completed_dates:
         return 0, False
-    if today in already_done_dates:
-        return 0, False
-    return DAILY_BONUS, True
+    if correct >= max(1, total * 0.5):
+        return DAILY_BONUS, True
+    return 0, False
 
 
-def compute_streak(last_active_date: str, current_streak: int, today: str) -> int:
-    """Update streak count based on last active date (display-only, no XP)."""
-    if last_active_date == today:
-        return current_streak or 1
-    yesterday = (date.fromisoformat(today) - timedelta(days=1)).isoformat()
-    if last_active_date == yesterday:
-        return (current_streak or 0) + 1
-    return 1
+def compute_streak(last_active: str, current_streak: int, today: str) -> int:
+    """Compute new streak value."""
+    if not last_active:
+        return 1
+    try:
+        last = datetime.fromisoformat(last_active).date() if "T" in last_active else date.fromisoformat(last_active)
+        today_date = date.fromisoformat(today)
+        diff = (today_date - last).days
+        if diff == 0:
+            return current_streak  # Same day
+        elif diff == 1:
+            return current_streak + 1  # Consecutive
+        else:
+            return 1  # Streak broken
+    except Exception:
+        return 1
