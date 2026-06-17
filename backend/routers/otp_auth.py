@@ -148,10 +148,21 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 </html>"""
 
         msg.attach(MIMEText(html, "html"))
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
-            s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            s.sendmail(GMAIL_USER, to_email, msg.as_string())
-        return True
+
+        # Try STARTTLS (port 587) first — works better on Render's network
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as s:
+                s.starttls()
+                s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                s.sendmail(GMAIL_USER, to_email, msg.as_string())
+            return True
+        except Exception as e587:
+            print(f"[EMAIL ERROR - 587 failed] {e587}")
+            # Fallback: try SMTP_SSL (port 465)
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as s:
+                s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                s.sendmail(GMAIL_USER, to_email, msg.as_string())
+            return True
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
         return False
