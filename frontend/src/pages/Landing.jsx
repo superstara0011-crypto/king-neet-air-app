@@ -359,13 +359,13 @@ export default function Landing() {
         setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
     }
 
-    // Opens PW-style login sheet
+    // Navigates to OTP Login page (Email + OTP flow)
     const handleLogin = () => {
         if (loginLoading) return;
-        setShowLoginSheet(true);
+        nav("/login");
     };
 
-    // Actual Google OAuth redirect (called after sheet confirm)
+    // (kept for reference — not used anymore, OTP login replaces Google OAuth sheet)
     const doGoogleLogin = async () => {
         setShowLoginSheet(false);
         setLoginLoading(true);

@@ -37,7 +37,7 @@ OTP_EXPIRE_MIN     = 10
 MAX_SESSIONS       = 2   # 1 app + 1 browser
 
 # ── MongoDB ───────────────────────────────────────────────────────────────────
-MONGO_URI   = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI   = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 _client     = MongoClient(MONGO_URI)
 db          = _client["neet_database"]
 users_col   = db["users"]
