@@ -359,15 +359,14 @@ export default function Landing() {
         setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
     }
 
-    // Navigates to OTP Login page (Email + OTP flow)
+    // Directly starts Google OAuth — opens Google's account chooser
     const handleLogin = () => {
         if (loginLoading) return;
-        nav("/login");
+        doGoogleLogin();
     };
 
-    // (kept for reference — not used anymore, OTP login replaces Google OAuth sheet)
+    // Google OAuth redirect — fetches auth URL from backend and redirects
     const doGoogleLogin = async () => {
-        setShowLoginSheet(false);
         setLoginLoading(true);
         showToast("Google se connect ho raha hai…", "🔗");
         try {
