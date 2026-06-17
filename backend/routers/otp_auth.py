@@ -3,22 +3,28 @@ backend/routers/otp_auth.py
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 King NEET AIR — Email OTP Login + Max 2 Session System
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-POST /auth/send-otp      → Gmail se OTP bhejo
+POST /auth/send-otp      → Resend se OTP bhejo
 POST /auth/verify-otp    → OTP verify + token
 GET  /auth/me            → Token se user info
 POST /auth/logout        → Session logout
 
+Why Resend instead of Gmail SMTP?
+  Render free tier blocks outbound SMTP ports (465/587).
+  Resend uses HTTPS API — works everywhere, no port blocking.
+
 .env mein add karo:
-  GMAIL_USER=yourapp@gmail.com
-  GMAIL_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+  RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
   JWT_SECRET=king-neet-air-secret-2024
-  MONGO_URI=mongodb+srv://...
+  MONGO_URL=mongodb+srv://...
+
+Setup (5 min):
+  1. resend.com → Sign up (free, 3000 emails/month)
+  2. Dashboard → API Keys → Create API Key → copy
+  3. Paste in Render env vars as RESEND_API_KEY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
-import os, random, string, smtplib, secrets
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import os, random, string, secrets, requests
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, EmailStr
 from pymongo import MongoClient
@@ -29,8 +35,8 @@ import jwt
 router = APIRouter(prefix="/auth", tags=["OTP Auth"])
 
 # ── Config ────────────────────────────────────────────────────────────────────
-GMAIL_USER         = os.getenv("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
+RESEND_API_KEY     = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL  = os.getenv("RESEND_FROM_EMAIL", "King NEET AIR <onboarding@resend.dev>")
 JWT_SECRET         = os.getenv("JWT_SECRET", "king-neet-air-secret-2024")
 JWT_ALGO           = "HS256"
 OTP_EXPIRE_MIN     = 10
@@ -86,15 +92,13 @@ def get_token(authorization: str = None) -> str:
         raise HTTPException(status_code=401, detail="Token missing")
     return authorization.split(" ")[1]
 
-# ── Email Sender ──────────────────────────────────────────────────────────────
+# ── Email Sender (Resend HTTPS API — no SMTP ports, never blocked) ───────────
 def send_otp_email(to_email: str, otp: str) -> bool:
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"👑 {otp} — King NEET AIR Login OTP"
-        msg["From"]    = f"King NEET AIR <{GMAIL_USER}>"
-        msg["To"]      = to_email
+    if not RESEND_API_KEY:
+        print("[EMAIL ERROR] RESEND_API_KEY not set in environment")
+        return False
 
-        html = f"""<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0a0b14;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0">
@@ -147,22 +151,25 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 </body>
 </html>"""
 
-        msg.attach(MIMEText(html, "html"))
-
-        # Try STARTTLS (port 587) first — works better on Render's network
-        try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as s:
-                s.starttls()
-                s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-                s.sendmail(GMAIL_USER, to_email, msg.as_string())
+    try:
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type":  "application/json",
+            },
+            json={
+                "from":    RESEND_FROM_EMAIL,
+                "to":      [to_email],
+                "subject": f"👑 {otp} — King NEET AIR Login OTP",
+                "html":    html,
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
             return True
-        except Exception as e587:
-            print(f"[EMAIL ERROR - 587 failed] {e587}")
-            # Fallback: try SMTP_SSL (port 465)
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as s:
-                s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-                s.sendmail(GMAIL_USER, to_email, msg.as_string())
-            return True
+        print(f"[EMAIL ERROR] Resend API {resp.status_code}: {resp.text}")
+        return False
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
         return False
