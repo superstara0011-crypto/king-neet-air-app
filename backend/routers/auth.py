@@ -1,7 +1,11 @@
 import re
+import os
 import uuid
 import httpx
-from fastapi import APIRouter, Request, Response, HTTPException
+import cloudinary
+import cloudinary.uploader
+from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File
+from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 
 from database import db
@@ -12,6 +16,15 @@ from services.levels import get_level
 from services.premium import get_top_user_ids
 
 router = APIRouter()
+
+# ── Cloudinary config (for profile picture uploads) ──────────────────────────
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    api_key=os.environ.get("CLOUDINARY_API_KEY", ""),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET", ""),
+    secure=True,
+)
+
 
 @router.get("/auth/google/url")
 async def google_auth_url(request: Request):
@@ -184,3 +197,78 @@ async def update_username(payload: UsernameUpdate, request: Request):
         raise HTTPException(status_code=400, detail="Username already taken")
     await db.users.update_one({"user_id": user.user_id}, {"$set": {"username": uname}})
     return {"username": uname}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# NEW — Profile editing: name + picture (added for Profile.jsx edit feature)
+# ════════════════════════════════════════════════════════════════════════════
+
+class ProfileUpdate(BaseModel):
+    name: str
+
+
+@router.put("/auth/profile")
+async def update_profile(payload: ProfileUpdate, request: Request):
+    user = await require_user(request)
+    name = payload.name.strip()
+
+    if not name or len(name) < 2 or len(name) > 40:
+        raise HTTPException(status_code=400, detail="Name must be 2-40 characters")
+
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"name": name}},
+    )
+    return {"name": name}
+
+
+@router.post("/auth/profile/picture")
+async def upload_profile_picture(request: Request, file: UploadFile = File(...)):
+    user = await require_user(request)
+
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, GIF allowed")
+
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be under 5MB")
+
+    try:
+        result = cloudinary.uploader.upload(
+            contents,
+            folder="king_neet_air/profile_pictures",
+            public_id=user.user_id,
+            overwrite=True,
+            resource_type="image",
+            transformation=[
+                {"width": 400, "height": 400, "crop": "fill", "gravity": "face"},
+                {"quality": "auto"},
+            ],
+        )
+        picture_url = result.get("secure_url")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"picture": picture_url}},
+    )
+
+    return {"picture": picture_url}
+
+
+@router.delete("/auth/profile/picture")
+async def remove_profile_picture(request: Request):
+    user = await require_user(request)
+
+    try:
+        cloudinary.uploader.destroy(f"king_neet_air/profile_pictures/{user.user_id}")
+    except Exception:
+        pass
+
+    await db.users.update_one(
+        {"user_id": user.user_id},
+        {"$set": {"picture": ""}},
+    )
+    return {"picture": ""}
