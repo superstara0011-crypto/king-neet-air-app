@@ -3,7 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import LevelBadge from "@/components/LevelBadge";
-import { Trophy, Zap, BookOpen, Target, Clock, TrendingUp, Star, Flame } from "lucide-react";
+import {
+    Trophy, Zap, BookOpen, Target, Clock, TrendingUp, Star, Flame,
+    ChevronRight, CheckCircle2, Circle, Calendar, BarChart3, BookMarked,
+    PlayCircle, Award
+} from "lucide-react";
 
 // Privacy: Initials avatar
 function Avatar({ name, size = 10 }) {
@@ -26,10 +30,12 @@ const PLAY_MODES = [
 ];
 
 const SUBJECTS = [
-    { name: "Biology", icon: "🧬", color: "#39FF14", path: "/play/chapter?subject=biology" },
-    { name: "Physics", icon: "⚛️", color: "#00F0FF", path: "/play/chapter?subject=physics" },
-    { name: "Chemistry", icon: "🧪", color: "#B900FF", path: "/play/chapter?subject=chemistry" },
+    { name: "Biology", icon: "🧬", color: "#39FF14", path: "/play/chapter?subject=biology", key: "biology" },
+    { name: "Physics", icon: "⚛️", color: "#00F0FF", path: "/play/chapter?subject=physics", key: "physics" },
+    { name: "Chemistry", icon: "🧪", color: "#B900FF", path: "/play/chapter?subject=chemistry", key: "chemistry" },
 ];
+
+const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function Dashboard() {
     const { user } = useAuth();
@@ -37,10 +43,15 @@ export default function Dashboard() {
     const [leaderboard, setLeaderboard] = useState([]);
     const [history, setHistory] = useState([]);
     const [dailyDone, setDailyDone] = useState(false);
+    const [subjectStats, setSubjectStats] = useState(null);
+    const [weeklyActivity, setWeeklyActivity] = useState(null);
 
     useEffect(() => {
         api.get("/leaderboard?limit=5").then(r => setLeaderboard(r.data?.slice(0, 5) || [])).catch(() => {});
         api.get("/quiz/history?limit=5").then(r => setHistory(r.data || [])).catch(() => {});
+        // Optional endpoints — fail silently if backend doesn't have them yet
+        api.get("/quiz/subject-stats").then(r => setSubjectStats(r.data)).catch(() => {});
+        api.get("/quiz/weekly-activity").then(r => setWeeklyActivity(r.data)).catch(() => {});
         // Check if daily challenge done today
         const today = new Date().toISOString().split("T")[0];
         if (user?.daily_challenges_completed?.includes(today)) setDailyDone(true);
@@ -52,11 +63,34 @@ export default function Dashboard() {
     const xpProgress = level.progress ? Math.round(level.progress * 100) : 0;
     const xpToNext = level.level_max - level.current_xp;
 
+    // Derive subject progress — uses backend data if available, else falls back to a safe default
+    const getSubjectProgress = (key) => {
+        if (subjectStats && subjectStats[key]) {
+            return {
+                completed: subjectStats[key].chapters_done || 0,
+                total: subjectStats[key].chapters_total || 1,
+                accuracy: subjectStats[key].accuracy || 0,
+            };
+        }
+        return { completed: 0, total: 1, accuracy: 0 };
+    };
+
+    // Last activity for "Continue where you left off"
+    const lastActivity = history?.[0];
+
+    // Weekly activity dots — uses backend data if available, else shows empty state
+    const weekDots = weeklyActivity?.days || [false, false, false, false, false, false, false];
+
+    // Today's simple goal — based on daily challenge + a default question target
+    const todayTarget = 20;
+    const todayDone = dailyDone ? todayTarget : (weeklyActivity?.today_count || 0);
+    const todayPct = Math.min(100, Math.round((todayDone / todayTarget) * 100));
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
             {/* Welcome Header */}
-            <div className="flex items-center justify-between mb-8 fade-up">
+            <div className="flex items-center justify-between mb-6 fade-up">
                 <div>
                     <p className="text-white/50 text-sm mb-1">Welcome back 👋</p>
                     <h1 className="font-heading font-black text-3xl sm:text-4xl">
@@ -73,8 +107,31 @@ export default function Dashboard() {
                 </div>
             </div>
 
+            {/* ── Continue Where You Left Off (Study Portal feel) ── */}
+            {lastActivity && (
+                <div className="glass-card p-4 mb-6 fade-up flex items-center gap-4 border border-[#7C3AED]/25"
+                    style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.08), rgba(0,0,0,0))" }}>
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                        style={{ background: "rgba(124,58,237,0.15)" }}>
+                        {lastActivity.mode === "daily_quiz" ? "⚡" : lastActivity.mode === "mock_test" ? "🎯" : lastActivity.mode === "pyq" ? "📜" : "📖"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-[#a78bfa] mb-0.5">Continue where you left off</div>
+                        <div className="font-bold text-sm capitalize truncate">
+                            {lastActivity.mode?.replace("_", " ")} {lastActivity.subject ? `· ${lastActivity.subject}` : ""}
+                        </div>
+                    </div>
+                    <button onClick={() => nav(PLAY_MODES.find(m => m.id === lastActivity.mode)?.path || "/play")}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs flex-shrink-0 transition hover:scale-105"
+                        style={{ background: "#7C3AED", color: "#fff" }}>
+                        <PlayCircle className="w-3.5 h-3.5" />
+                        Resume
+                    </button>
+                </div>
+            )}
+
             {/* XP + Level Bar */}
-            <div className="glass-card p-5 mb-8 fade-up">
+            <div className="glass-card p-5 mb-6 fade-up">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                         <Avatar name={user.name} size={12} />
@@ -104,7 +161,7 @@ export default function Dashboard() {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 {[
                     { label: "Total XP", value: user.total_xp?.toLocaleString() || 0, icon: "⚡", color: "#39FF14" },
                     { label: "Accuracy", value: `${user.questions_answered > 0 ? Math.round((user.correct_answers / user.questions_answered) * 100) : 0}%`, icon: "🎯", color: "#00F0FF" },
@@ -117,6 +174,50 @@ export default function Dashboard() {
                         <div className="font-mono text-xs text-white/40 uppercase tracking-widest mt-1">{s.label}</div>
                     </div>
                 ))}
+            </div>
+
+            {/* ── Today's Goal + Weekly Activity (Study Portal feel) ── */}
+            <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                {/* Today's Goal */}
+                <div className="glass-card p-5 border border-[#FFD700]/20">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Target className="w-4 h-4 text-[#FFD700]" />
+                            <span className="font-mono text-xs uppercase tracking-widest text-[#FFD700]">Today's Goal</span>
+                        </div>
+                        <span className="font-mono text-xs text-white/40">{todayDone}/{todayTarget} Qs</span>
+                    </div>
+                    <div className="bg-white/10 rounded-full h-2.5 overflow-hidden mb-2">
+                        <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${todayPct}%`, background: "#FFD700", boxShadow: "0 0 8px #FFD700" }} />
+                    </div>
+                    <div className="text-xs text-white/40">
+                        {todayPct >= 100 ? "🎉 Goal complete! Great work today." : `${todayTarget - todayDone} more questions to hit today's goal`}
+                    </div>
+                </div>
+
+                {/* Weekly Activity */}
+                <div className="glass-card p-5 border border-[#00F0FF]/20">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="w-4 h-4 text-[#00F0FF]" />
+                        <span className="font-mono text-xs uppercase tracking-widest text-[#00F0FF]">This Week</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5">
+                        {WEEKDAYS.map((d, i) => (
+                            <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
+                                <div className={`w-full aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all`}
+                                    style={{
+                                        background: weekDots[i] ? "#00F0FF" : "rgba(255,255,255,0.06)",
+                                        color: weekDots[i] ? "#000" : "rgba(255,255,255,0.3)",
+                                        boxShadow: weekDots[i] ? "0 0 8px rgba(0,240,255,0.5)" : "none",
+                                    }}>
+                                    {weekDots[i] ? "✓" : ""}
+                                </div>
+                                <span className="text-[9px] font-mono text-white/30">{d}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             <div className="grid lg:grid-cols-3 gap-8">
@@ -170,18 +271,39 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Subjects */}
+                    {/* ── Subjects with Progress Bars (Study Portal feel) ── */}
                     <div>
-                        <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-3">Practice by Subject</p>
-                        <div className="grid grid-cols-3 gap-3">
-                            {SUBJECTS.map(s => (
-                                <button key={s.name} onClick={() => nav(s.path)}
-                                    className="glass-card p-4 text-center transition-all hover:scale-[1.03]"
-                                    style={{ borderColor: s.color + "30" }}>
-                                    <div className="text-3xl mb-2">{s.icon}</div>
-                                    <div className="font-bold text-sm" style={{ color: s.color }}>{s.name}</div>
-                                </button>
-                            ))}
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="font-mono text-xs uppercase tracking-widest text-white/40">Practice by Subject</p>
+                            <span className="font-mono text-[10px] text-white/30">Chapter progress</span>
+                        </div>
+                        <div className="space-y-3">
+                            {SUBJECTS.map(s => {
+                                const prog = getSubjectProgress(s.key);
+                                const pct = Math.round((prog.completed / prog.total) * 100);
+                                return (
+                                    <button key={s.name} onClick={() => nav(s.path)}
+                                        className="glass-card w-full p-4 text-left transition-all hover:scale-[1.01]"
+                                        style={{ borderColor: s.color + "30" }}>
+                                        <div className="flex items-center gap-3 mb-2.5">
+                                            <div className="text-2xl flex-shrink-0">{s.icon}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-bold text-sm" style={{ color: s.color }}>{s.name}</span>
+                                                    <span className="font-mono text-xs text-white/40">
+                                                        {subjectStats ? `${prog.completed}/${prog.total} chapters` : "Start practicing →"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-white/30 flex-shrink-0" />
+                                        </div>
+                                        <div className="bg-white/10 rounded-full h-2 overflow-hidden">
+                                            <div className="h-full rounded-full transition-all duration-700"
+                                                style={{ width: `${subjectStats ? pct : 0}%`, background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -239,6 +361,28 @@ export default function Dashboard() {
                             style={{ background: dailyDone ? "#39FF1450" : "#39FF14", color: dailyDone ? "#39FF14" : "#000" }}>
                             {dailyDone ? "✅ Completed" : "Start Challenge →"}
                         </button>
+                    </div>
+
+                    {/* ── Study Resources Quick Access (Study Portal feel) ── */}
+                    <div className="glass-card p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <BookMarked className="w-4 h-4 text-[#a78bfa]" />
+                            <span className="font-bold text-sm">Study Resources</span>
+                        </div>
+                        <div className="space-y-2">
+                            {[
+                                { label: "Chapter Notes", icon: "📓", path: "/notes" },
+                                { label: "Formula Sheets", icon: "📐", path: "/notes?type=formula" },
+                                { label: "Quick Revision", icon: "⏱️", path: "/notes?type=revision" },
+                            ].map(r => (
+                                <button key={r.label} onClick={() => nav(r.path)}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition hover:bg-white/5 text-left">
+                                    <span className="text-lg">{r.icon}</span>
+                                    <span className="flex-1 text-sm font-medium text-white/80">{r.label}</span>
+                                    <ChevronRight className="w-3.5 h-3.5 text-white/30" />
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Mini Leaderboard */}
