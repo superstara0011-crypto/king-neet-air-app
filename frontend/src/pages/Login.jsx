@@ -13,6 +13,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 // ── inline styles ────────────────────────────────────────────────────────────
 const S = `
@@ -213,6 +214,7 @@ const S = `
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Login() {
   const nav = useNavigate();
+  const { refresh } = useAuth();
 
   const [step, setStep]       = useState(1); // 1=email, 2=otp
   const [email, setEmail]     = useState("");
@@ -324,11 +326,15 @@ export default function Login() {
       if (!res.ok) throw new Error(data.detail || "OTP galat hai");
 
       // Save token
-      localStorage.setItem("token", data.token);
+      localStorage.setItem("session_token", data.token);
       localStorage.setItem("user",  JSON.stringify(data.user));
 
       setSuccess("Login successful! Dashboard pe ja raha hoon 🚀");
-      setTimeout(() => nav("/dashboard"), 1000);
+
+      // Refresh auth context so Protected routes see the logged-in user immediately
+      await refresh();
+
+      setTimeout(() => nav("/dashboard"), 600);
     } catch (err) {
       setError(err.message);
       setHasError(true);
