@@ -1,6 +1,9 @@
 import uuid
+import os
+import cloudinary
+import cloudinary.uploader
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from datetime import datetime, timezone
 from pydantic import BaseModel
 
@@ -12,6 +15,14 @@ from services.questions import ai_generate_questions, ai_daily_remaining, ai_gen
 
 router = APIRouter(prefix="/admin")
 
+# ── Cloudinary config (for note image/PDF uploads) ───────────────────────────
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    api_key=os.environ.get("CLOUDINARY_API_KEY", ""),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET", ""),
+    secure=True,
+)
+
 
 # ─── MODELS ─────────────────────────────────────────────────────────
 class NoteIn(BaseModel):
@@ -21,6 +32,8 @@ class NoteIn(BaseModel):
     content: str = ""
     type: str = "text"  # text, mindmap, diagram, formula, ncert
     image_url: str = ""
+    file_url: str = ""   # PDF attachment URL
+    file_name: str = ""  # original PDF filename (for display)
 
 class AdminUserIn(BaseModel):
     email: str
@@ -237,6 +250,8 @@ async def admin_list_notes(subject: Optional[str] = None, admin: User = Depends(
         "content": d.get("content", ""),
         "type": d.get("type", "text"),
         "image_url": d.get("image_url", ""),
+        "file_url": d.get("file_url", ""),
+        "file_name": d.get("file_name", ""),
         "created_at": d.get("created_at"),
     } for d in docs]
 
@@ -251,6 +266,8 @@ async def admin_create_note(payload: NoteIn, admin: User = Depends(require_admin
         "content": payload.content,
         "type": payload.type,
         "image_url": payload.image_url,
+        "file_url": payload.file_url,
+        "file_name": payload.file_name,
         "created_by": admin.user_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -269,6 +286,8 @@ async def admin_update_note(note_id: str, payload: NoteIn, admin: User = Depends
             "content": payload.content,
             "type": payload.type,
             "image_url": payload.image_url,
+            "file_url": payload.file_url,
+            "file_name": payload.file_name,
         }},
     )
     if res.matched_count == 0:
@@ -282,3 +301,41 @@ async def admin_delete_note(note_id: str, admin: User = Depends(require_admin)):
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Note not found")
     return {"ok": True}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# NOTE FILE UPLOAD — Image or PDF (via Cloudinary)
+# ════════════════════════════════════════════════════════════════════════════
+@router.post("/notes/upload")
+async def admin_upload_note_file(file: UploadFile = File(...), admin: User = Depends(require_admin)):
+    allowed_images = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    allowed_pdf = {"application/pdf"}
+
+    if file.content_type not in allowed_images and file.content_type not in allowed_pdf:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, GIF, or PDF allowed")
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File must be under 10MB")
+
+    is_pdf = file.content_type in allowed_pdf
+
+    try:
+        result = cloudinary.uploader.upload(
+            contents,
+            folder="king_neet_air/notes",
+            resource_type="image" if not is_pdf else "image",  # Cloudinary treats PDF as "image" resource for delivery
+            public_id=f"note_{uuid.uuid4().hex[:12]}",
+            **({} if is_pdf else {
+                "transformation": [{"quality": "auto"}],
+            }),
+        )
+        url = result.get("secure_url")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    return {
+        "url": url,
+        "is_pdf": is_pdf,
+        "file_name": file.filename,
+    }

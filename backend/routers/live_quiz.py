@@ -25,22 +25,15 @@ Students can attempt it any time inside [starts_at, ends_at] (or always, if
 import uuid
 from typing import Optional, List
 from datetime import datetime, timezone
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel
 
 from database import db
-from deps import require_user, require_admin  # require_admin assumed to exist; fallback below if not
+from models import User
+from deps import require_user, require_admin
 from services.levels import get_level
 
 router = APIRouter()
-
-
-# ── Fallback admin check (in case require_admin doesn't exist in deps.py) ───
-async def _ensure_admin(request: Request):
-    user = await require_user(request)
-    if not getattr(user, "is_admin", False):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -134,8 +127,7 @@ def _public_quiz(quiz):
 # ════════════════════════════════════════════════════════════════════════════
 
 @router.get("/admin/live-quiz")
-async def admin_list_live_quizzes(request: Request):
-    await _ensure_admin(request)
+async def admin_list_live_quizzes(admin: User = Depends(require_admin)):
     docs = await db.live_quizzes.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
     for d in docs:
         d["status"] = _status(d)
@@ -144,8 +136,8 @@ async def admin_list_live_quizzes(request: Request):
 
 
 @router.post("/admin/live-quiz")
-async def admin_create_live_quiz(payload: LiveQuizCreate, request: Request):
-    user = await _ensure_admin(request)
+async def admin_create_live_quiz(payload: LiveQuizCreate, admin: User = Depends(require_admin)):
+    user = admin
 
     if not payload.title.strip():
         raise HTTPException(status_code=400, detail="Title is required")
@@ -176,8 +168,7 @@ async def admin_create_live_quiz(payload: LiveQuizCreate, request: Request):
 
 
 @router.put("/admin/live-quiz/{quiz_id}")
-async def admin_update_live_quiz(quiz_id: str, payload: LiveQuizUpdate, request: Request):
-    await _ensure_admin(request)
+async def admin_update_live_quiz(quiz_id: str, payload: LiveQuizUpdate, admin: User = Depends(require_admin)):
     existing = await db.live_quizzes.find_one({"quiz_id": quiz_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -195,8 +186,7 @@ async def admin_update_live_quiz(quiz_id: str, payload: LiveQuizUpdate, request:
 
 
 @router.delete("/admin/live-quiz/{quiz_id}")
-async def admin_delete_live_quiz(quiz_id: str, request: Request):
-    await _ensure_admin(request)
+async def admin_delete_live_quiz(quiz_id: str, admin: User = Depends(require_admin)):
     result = await db.live_quizzes.delete_one({"quiz_id": quiz_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -204,8 +194,7 @@ async def admin_delete_live_quiz(quiz_id: str, request: Request):
 
 
 @router.post("/admin/live-quiz/{quiz_id}/go-live")
-async def admin_go_live(quiz_id: str, request: Request):
-    await _ensure_admin(request)
+async def admin_go_live(quiz_id: str, admin: User = Depends(require_admin)):
     result = await db.live_quizzes.update_one(
         {"quiz_id": quiz_id},
         {"$set": {"manually_live": True, "manually_ended": False, "starts_at": _now().isoformat()}},
@@ -216,8 +205,7 @@ async def admin_go_live(quiz_id: str, request: Request):
 
 
 @router.post("/admin/live-quiz/{quiz_id}/end")
-async def admin_end_quiz(quiz_id: str, request: Request):
-    await _ensure_admin(request)
+async def admin_end_quiz(quiz_id: str, admin: User = Depends(require_admin)):
     result = await db.live_quizzes.update_one(
         {"quiz_id": quiz_id},
         {"$set": {"manually_ended": True, "manually_live": False}},

@@ -9,6 +9,7 @@ import {
     Radio, Play, Square, Clock, Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getGroups } from "@/constants/syllabus";
 
 const EMPTY_Q = {
     subject: "biology", chapter: "", question: "",
@@ -235,6 +236,8 @@ function UsersTab({ isSuperAdmin }) {
 function Questions() {
     const [questions, setQuestions] = useState(null);
     const [filter, setFilter] = useState("all");
+    const [groupFilter, setGroupFilter] = useState(null);   // e.g. "11th" or "physical"
+    const [chapterFilter, setChapterFilter] = useState(null);
     const [editing, setEditing] = useState(null);
     const [aiOpen, setAiOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -247,6 +250,10 @@ function Questions() {
     }, [filter]);
 
     useEffect(() => { load(); }, [load]);
+    // Reset deeper filters whenever the subject changes
+    useEffect(() => { setGroupFilter(null); setChapterFilter(null); }, [filter]);
+
+    const groups = filter !== "all" ? getGroups(filter) : [];
 
     const del = async (id) => {
         if (!window.confirm("Delete this question?")) return;
@@ -257,14 +264,16 @@ function Questions() {
         } catch { toast.error("Failed to delete"); }
     };
 
-    const filtered = (questions || []).filter(q =>
-        q.question?.toLowerCase().includes(search.toLowerCase()) ||
-        q.chapter?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = (questions || []).filter(q => {
+        const matchesSearch = q.question?.toLowerCase().includes(search.toLowerCase()) ||
+            q.chapter?.toLowerCase().includes(search.toLowerCase());
+        const matchesChapter = !chapterFilter || q.chapter === chapterFilter;
+        return matchesSearch && matchesChapter;
+    });
 
     return (
         <div>
-            <div className="flex flex-wrap gap-3 mb-6 items-center justify-between">
+            <div className="flex flex-wrap gap-3 mb-4 items-center justify-between">
                 <div className="flex gap-2 flex-wrap">
                     {["all", "biology", "physics", "chemistry"].map((s) => (
                         <button key={s} onClick={() => setFilter(s)}
@@ -284,6 +293,47 @@ function Questions() {
                     </button>
                 </div>
             </div>
+
+            {/* ── Drill-down: Class/Branch (11th, 12th, Physical, etc.) ── */}
+            {groups.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-3">
+                    {groups.map(g => (
+                        <button key={g.key}
+                            onClick={() => { setGroupFilter(groupFilter === g.key ? null : g.key); setChapterFilter(null); }}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition ${
+                                groupFilter === g.key
+                                    ? "bg-[#00F0FF]/20 border-[#00F0FF] text-[#00F0FF]"
+                                    : "border-white/15 text-white/50 hover:border-white/30"
+                            }`}>
+                            {g.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* ── Drill-down: Chapter list for the selected group ── */}
+            {groupFilter && (
+                <div className="flex gap-2 flex-wrap mb-4 max-h-32 overflow-y-auto p-2 bg-black/20 rounded-lg border border-white/5">
+                    {groups.find(g => g.key === groupFilter)?.chapters.map(ch => (
+                        <button key={ch}
+                            onClick={() => setChapterFilter(chapterFilter === ch ? null : ch)}
+                            className={`px-2.5 py-1 text-[11px] rounded-md border transition ${
+                                chapterFilter === ch
+                                    ? "bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14]"
+                                    : "border-white/10 text-white/40 hover:text-white/70"
+                            }`}>
+                            {ch}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {chapterFilter && (
+                <div className="mb-3 flex items-center gap-2 text-xs text-white/40">
+                    Filtering by: <span className="text-[#39FF14] font-bold">{chapterFilter}</span>
+                    <button onClick={() => setChapterFilter(null)} className="text-white/30 hover:text-white"><X className="w-3 h-3" /></button>
+                </div>
+            )}
 
             <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search questions..."
@@ -868,6 +918,13 @@ function QuestionModal({ initial, onClose, onSaved }) {
     } : { ...EMPTY_Q, options: ["", "", "", ""] });
     const [saving, setSaving] = useState(false);
 
+    // Pre-select the Class/Branch group that contains this chapter (for edit mode)
+    const [qGroup, setQGroup] = useState(() => {
+        if (!initial?.chapter) return null;
+        const g = getGroups(initial.subject).find(gr => gr.chapters.includes(initial.chapter));
+        return g ? g.key : null;
+    });
+
     const save = async () => {
         if (!form.question.trim() || form.options.some((o) => !o.trim()) || !form.chapter.trim()) {
             toast.error("Fill question, chapter and all 4 options");
@@ -890,16 +947,29 @@ function QuestionModal({ initial, onClose, onSaved }) {
     return (
         <Modal title={initial ? "Edit Question" : "Add Question"} onClose={onClose}>
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                     <Field label="Subject">
-                        <select value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} className={inputCls}>
+                        <select value={form.subject} onChange={(e) => { setForm({ ...form, subject: e.target.value, chapter: "" }); setQGroup(null); }} className={inputCls}>
                             <option value="biology">Biology</option>
                             <option value="physics">Physics</option>
                             <option value="chemistry">Chemistry</option>
                         </select>
                     </Field>
+                    <Field label="Class / Branch">
+                        <select value={qGroup || ""} onChange={(e) => { setQGroup(e.target.value); setForm({ ...form, chapter: "" }); }} className={inputCls}>
+                            <option value="">Select...</option>
+                            {getGroups(form.subject).map(g => (
+                                <option key={g.key} value={g.key}>{g.label}</option>
+                            ))}
+                        </select>
+                    </Field>
                     <Field label="Chapter">
-                        <input value={form.chapter} onChange={(e) => setForm({ ...form, chapter: e.target.value })} className={inputCls} />
+                        <select value={form.chapter} onChange={(e) => setForm({ ...form, chapter: e.target.value })} className={inputCls} disabled={!qGroup}>
+                            <option value="">Select...</option>
+                            {qGroup && getGroups(form.subject).find(g => g.key === qGroup)?.chapters.map(ch => (
+                                <option key={ch} value={ch}>{ch}</option>
+                            ))}
+                        </select>
                     </Field>
                 </div>
                 <Field label="Question Text">
@@ -942,8 +1012,11 @@ function NoteModal({ initial, onClose, onSaved }) {
     const [form, setForm] = useState(initial ? {
         subject: initial.subject, chapter: initial.chapter, title: initial.title,
         content: initial.content || "", type: initial.type || "text", image_url: initial.image_url || "",
-    } : { ...EMPTY_NOTE });
+        file_url: initial.file_url || "", file_name: initial.file_name || "",
+    } : { ...EMPTY_NOTE, file_url: "", file_name: "" });
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = React.useRef(null);
 
     const save = async () => {
         if (!form.title.trim() || !form.chapter.trim()) {
@@ -959,6 +1032,37 @@ function NoteModal({ initial, onClose, onSaved }) {
         } catch (e) {
             toast.error(e.response?.data?.detail || "Failed to save");
         } finally { setSaving(false); }
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error("File must be under 10MB");
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const r = await api.post("/admin/notes/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            if (r.data.is_pdf) {
+                setForm(f => ({ ...f, file_url: r.data.url, file_name: r.data.file_name }));
+                toast.success("PDF uploaded!");
+            } else {
+                setForm(f => ({ ...f, image_url: r.data.url }));
+                toast.success("Image uploaded!");
+            }
+        } catch (e) {
+            toast.error(e.response?.data?.detail || "Upload failed");
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
     };
 
     return (
@@ -991,10 +1095,42 @@ function NoteModal({ initial, onClose, onSaved }) {
                 <Field label="Content">
                     <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={5} className={inputCls} placeholder="Write note content here..." />
                 </Field>
-                <Field label="Image URL (optional — for diagrams/mind maps)">
-                    <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." className={inputCls} />
-                    {form.image_url && <img src={form.image_url} alt="preview" className="mt-2 w-full h-32 object-cover rounded-lg border border-white/10" />}
+
+                {/* ── File Upload (Image or PDF) ── */}
+                <Field label="Attach Image or PDF (optional)">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                        onChange={handleFileSelect}
+                        disabled={uploading}
+                        className={`${inputCls} cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[#39FF14]/20 file:text-[#39FF14] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#39FF14]/30`}
+                    />
+                    {uploading && (
+                        <div className="flex items-center gap-2 mt-2 text-xs text-[#39FF14]">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading...
+                        </div>
+                    )}
+                    {form.image_url && (
+                        <div className="mt-2 relative">
+                            <img src={form.image_url} alt="preview" className="w-full h-32 object-cover rounded-lg border border-white/10" />
+                            <button onClick={() => setForm(f => ({ ...f, image_url: "" }))}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500/80 transition">
+                                <X className="w-3.5 h-3.5 text-white" />
+                            </button>
+                        </div>
+                    )}
+                    {form.file_url && (
+                        <div className="mt-2 flex items-center gap-2 bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-lg p-2.5">
+                            <FileText className="w-4 h-4 text-[#FF3B30] shrink-0" />
+                            <span className="text-xs text-white/70 flex-1 truncate">{form.file_name || "PDF attached"}</span>
+                            <button onClick={() => setForm(f => ({ ...f, file_url: "", file_name: "" }))}>
+                                <X className="w-3.5 h-3.5 text-white/50 hover:text-red-400" />
+                            </button>
+                        </div>
+                    )}
                 </Field>
+
                 <button onClick={save} disabled={saving}
                     className="w-full bg-[#39FF14] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition">
                     {saving ? "Saving..." : initial ? "Update Note" : "Add Note"}
