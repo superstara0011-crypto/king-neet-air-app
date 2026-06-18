@@ -5,18 +5,18 @@ from starlette.middleware.cors import CORSMiddleware
 
 from database import client
 from services.questions import ensure_seed_questions
-from routers import auth, questions, quiz, leaderboard, profile, admin, otp_auth
+from routers import auth, questions, quiz, leaderboard, profile, admin, live_quiz
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 api_router.include_router(auth.router)
-api_router.include_router(otp_auth.router)
 api_router.include_router(questions.router)
 api_router.include_router(quiz.router)
 api_router.include_router(leaderboard.router)
 api_router.include_router(profile.router)
 api_router.include_router(admin.router)
+api_router.include_router(live_quiz.router)
 
 
 @api_router.get("/")

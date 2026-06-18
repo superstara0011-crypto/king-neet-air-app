@@ -6,6 +6,7 @@ import {
     Users, BookOpen, BarChart3, Loader2, Plus, Trash2, Pencil,
     Sparkles, X, ShieldAlert, FileText, Shield, Crown, Eye,
     Image, ChevronDown, ChevronUp, Lock, Unlock, Settings,
+    Radio, Play, Square, Clock, Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +19,17 @@ const EMPTY_Q = {
 const EMPTY_NOTE = {
     subject: "biology", chapter: "", title: "",
     content: "", type: "text", image_url: "",
+};
+
+const EMPTY_LIVE_Q = {
+    question: "", options: ["", "", "", ""], correct: 0,
+    explanation: "", image_url: "", subject: "biology",
+};
+
+const EMPTY_LIVE_QUIZ = {
+    title: "", description: "", subject: "mixed",
+    duration_minutes: 30, starts_at: "", ends_at: "",
+    xp_per_correct: 4, xp_penalty_wrong: 1, questions: [],
 };
 
 // Admin roles
@@ -48,6 +60,7 @@ export default function Admin() {
     const allTabs = [
         { id: "overview", label: "Overview", icon: <BarChart3 className="w-4 h-4" />, roles: ["all"] },
         { id: "questions", label: "Questions", icon: <BookOpen className="w-4 h-4" />, roles: ["all"] },
+        { id: "live_quiz", label: "Live Quiz", icon: <Radio className="w-4 h-4" />, roles: ["all"] },
         { id: "notes", label: "Notes", icon: <FileText className="w-4 h-4" />, roles: ["all"] },
         { id: "users", label: "Users", icon: <Users className="w-4 h-4" />, roles: ["super_admin", "analytics_admin"] },
         { id: "admins", label: "Admin Access", icon: <Shield className="w-4 h-4" />, roles: ["super_admin"] },
@@ -94,6 +107,7 @@ export default function Admin() {
 
             {tab === "overview" && <Overview />}
             {tab === "questions" && <Questions />}
+            {tab === "live_quiz" && <LiveQuizTab />}
             {tab === "notes" && <Notes />}
             {tab === "users" && <UsersTab isSuperAdmin={isSuperAdmin} />}
             {tab === "admins" && isSuperAdmin && <AdminAccess />}
@@ -315,6 +329,327 @@ function Questions() {
             {editing && <QuestionModal initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
             {aiOpen && <AIModal onClose={() => setAiOpen(false)} onDone={() => { setAiOpen(false); load(); }} />}
         </div>
+    );
+}
+
+// ─── LIVE QUIZ ──────────────────────────────────────────────────────
+function LiveQuizTab() {
+    const [quizzes, setQuizzes] = useState(null);
+    const [editing, setEditing] = useState(null);
+    const [search, setSearch] = useState("");
+
+    const load = useCallback(async () => {
+        try {
+            const r = await api.get("/admin/live-quiz");
+            setQuizzes(r.data);
+        } catch { setQuizzes([]); }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const del = async (id) => {
+        if (!window.confirm("Delete this live quiz? This cannot be undone.")) return;
+        try {
+            await api.delete(`/admin/live-quiz/${id}`);
+            toast.success("Quiz deleted");
+            load();
+        } catch { toast.error("Failed to delete"); }
+    };
+
+    const goLive = async (id) => {
+        try {
+            await api.post(`/admin/live-quiz/${id}/go-live`);
+            toast.success("Quiz is now LIVE 🔴");
+            load();
+        } catch { toast.error("Failed to go live"); }
+    };
+
+    const endQuiz = async (id) => {
+        if (!window.confirm("End this quiz now? Students won't be able to attempt it anymore.")) return;
+        try {
+            await api.post(`/admin/live-quiz/${id}/end`);
+            toast.success("Quiz ended");
+            load();
+        } catch { toast.error("Failed to end quiz"); }
+    };
+
+    const filtered = (quizzes || []).filter(q =>
+        q.title?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const statusBadge = (status) => {
+        const map = {
+            live:     { label: "🔴 LIVE",     color: "#39FF14", bg: "rgba(57,255,20,0.12)" },
+            upcoming: { label: "⏰ Upcoming", color: "#FFD700", bg: "rgba(255,215,0,0.12)" },
+            ended:    { label: "⬛ Ended",     color: "#888",    bg: "rgba(255,255,255,0.06)" },
+            draft:    { label: "📝 Draft",     color: "#00F0FF", bg: "rgba(0,240,255,0.12)" },
+        };
+        const s = map[status] || map.draft;
+        return (
+            <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded-full font-bold"
+                style={{ color: s.color, background: s.bg, border: `1px solid ${s.color}40` }}>
+                {s.label}
+            </span>
+        );
+    };
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-3 mb-6 items-center justify-between">
+                <p className="text-white/50 text-sm">Create and schedule live quizzes with your own questions</p>
+                <button onClick={() => setEditing("new")}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest font-bold rounded-lg bg-[#39FF14] text-black hover:opacity-90 transition">
+                    <Plus className="w-4 h-4" />New Live Quiz
+                </button>
+            </div>
+
+            <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search live quizzes..."
+                className="w-full mb-4 bg-black/40 border border-[#39FF14]/25 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-[#39FF14]" />
+
+            {!quizzes ? <Spinner /> : (
+                <div className="space-y-3">
+                    {filtered.map((q) => (
+                        <div key={q.id} className="glass-card p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                        {statusBadge(q.status)}
+                                        <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded-full border"
+                                            style={{ borderColor: q.subject === "biology" ? "#39FF14" : q.subject === "physics" ? "#00F0FF" : q.subject === "chemistry" ? "#B900FF" : "#FFD700",
+                                                color: q.subject === "biology" ? "#39FF14" : q.subject === "physics" ? "#00F0FF" : q.subject === "chemistry" ? "#B900FF" : "#FFD700" }}>
+                                            {q.subject}
+                                        </span>
+                                        <span className="text-white/40 font-mono text-xs flex items-center gap-1">
+                                            <BookOpen className="w-3 h-3" />{q.question_count} Qs
+                                        </span>
+                                        <span className="text-white/40 font-mono text-xs flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />{q.duration_minutes} min
+                                        </span>
+                                    </div>
+                                    <h3 className="font-heading font-bold text-base mb-1">{q.title}</h3>
+                                    {q.description && <p className="text-white/50 text-xs leading-relaxed">{q.description}</p>}
+                                    {(q.starts_at || q.ends_at) && (
+                                        <div className="mt-2 flex items-center gap-2 text-[10px] text-white/30 font-mono">
+                                            <Calendar className="w-3 h-3" />
+                                            {q.starts_at && <span>From: {new Date(q.starts_at).toLocaleString()}</span>}
+                                            {q.ends_at && <span>To: {new Date(q.ends_at).toLocaleString()}</span>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-2 shrink-0 items-end">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setEditing(q)} className="text-white/50 hover:text-[#39FF14]" title="Edit"><Pencil className="w-4 h-4" /></button>
+                                        <button onClick={() => del(q.id)} className="text-white/50 hover:text-[#FF3B30]" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                    {q.status !== "live" && q.status !== "ended" && (
+                                        <button onClick={() => goLive(q.id)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded-lg bg-[#39FF14] text-black hover:opacity-90 transition">
+                                            <Play className="w-3 h-3" />Go Live Now
+                                        </button>
+                                    )}
+                                    {q.status === "live" && (
+                                        <button onClick={() => endQuiz(q.id)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded-lg bg-[#FF3B30] text-white hover:opacity-90 transition">
+                                            <Square className="w-3 h-3" />End Now
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {filtered.length === 0 && <div className="text-center py-12 text-white/40 font-mono">No live quizzes yet. Create your first one!</div>}
+                </div>
+            )}
+
+            {editing && <LiveQuizModal initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+        </div>
+    );
+}
+
+function LiveQuizModal({ initial, onClose, onSaved }) {
+    const [form, setForm] = useState(initial ? {
+        title: initial.title, description: initial.description || "",
+        subject: initial.subject, duration_minutes: initial.duration_minutes,
+        starts_at: initial.starts_at ? initial.starts_at.slice(0, 16) : "",
+        ends_at: initial.ends_at ? initial.ends_at.slice(0, 16) : "",
+        xp_per_correct: initial.xp_per_correct ?? 4,
+        xp_penalty_wrong: initial.xp_penalty_wrong ?? 1,
+        questions: initial.questions || [],
+    } : { ...EMPTY_LIVE_QUIZ });
+    const [saving, setSaving] = useState(false);
+    const [qDraft, setQDraft] = useState({ ...EMPTY_LIVE_Q });
+    const [editingQIdx, setEditingQIdx] = useState(null);
+
+    const setOpt = (i, v) => {
+        const opts = [...qDraft.options];
+        opts[i] = v;
+        setQDraft({ ...qDraft, options: opts });
+    };
+
+    const addOrUpdateQuestion = () => {
+        if (!qDraft.question.trim() || qDraft.options.some(o => !o.trim())) {
+            toast.error("Fill question and all 4 options");
+            return;
+        }
+        const qs = [...form.questions];
+        if (editingQIdx !== null) {
+            qs[editingQIdx] = qDraft;
+        } else {
+            qs.push(qDraft);
+        }
+        setForm({ ...form, questions: qs });
+        setQDraft({ ...EMPTY_LIVE_Q });
+        setEditingQIdx(null);
+    };
+
+    const editQuestion = (i) => {
+        setQDraft(form.questions[i]);
+        setEditingQIdx(i);
+    };
+
+    const removeQuestion = (i) => {
+        setForm({ ...form, questions: form.questions.filter((_, idx) => idx !== i) });
+        if (editingQIdx === i) { setQDraft({ ...EMPTY_LIVE_Q }); setEditingQIdx(null); }
+    };
+
+    const save = async () => {
+        if (!form.title.trim()) { toast.error("Title is required"); return; }
+        if (form.questions.length === 0) { toast.error("Add at least one question"); return; }
+        setSaving(true);
+        try {
+            const payload = {
+                ...form,
+                starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
+                ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+                duration_minutes: parseInt(form.duration_minutes),
+                xp_per_correct: parseInt(form.xp_per_correct),
+                xp_penalty_wrong: parseInt(form.xp_penalty_wrong),
+            };
+            if (initial) await api.put(`/admin/live-quiz/${initial.id}`, payload);
+            else await api.post("/admin/live-quiz", payload);
+            toast.success(initial ? "Quiz updated" : "Quiz created");
+            onSaved();
+        } catch (e) {
+            toast.error(e.response?.data?.detail || "Failed to save");
+        } finally { setSaving(false); }
+    };
+
+    return (
+        <Modal title={initial ? "Edit Live Quiz" : "Create Live Quiz"} onClose={onClose}>
+            <div className="space-y-4">
+                <Field label="Quiz Title">
+                    <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} placeholder="e.g. Sunday Mega Test" />
+                </Field>
+                <Field label="Description (optional)">
+                    <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className={inputCls} />
+                </Field>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <Field label="Subject">
+                        <select value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} className={inputCls}>
+                            <option value="mixed">Mixed</option>
+                            <option value="biology">Biology</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                        </select>
+                    </Field>
+                    <Field label="Duration (minutes)">
+                        <input type="number" min={5} value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className={inputCls} />
+                    </Field>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <Field label="Starts At (optional — leave blank + use 'Go Live Now' instead)">
+                        <input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className={inputCls} />
+                    </Field>
+                    <Field label="Ends At (optional — leave blank = open until manually ended)">
+                        <input type="datetime-local" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} className={inputCls} />
+                    </Field>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <Field label="XP per correct answer">
+                        <input type="number" min={1} value={form.xp_per_correct} onChange={(e) => setForm({ ...form, xp_per_correct: e.target.value })} className={inputCls} />
+                    </Field>
+                    <Field label="XP penalty for wrong answer">
+                        <input type="number" min={0} value={form.xp_penalty_wrong} onChange={(e) => setForm({ ...form, xp_penalty_wrong: e.target.value })} className={inputCls} />
+                    </Field>
+                </div>
+
+                <div className="border-t border-white/10 pt-4">
+                    <div className="font-mono text-xs uppercase tracking-widest text-[#39FF14] mb-3">
+                        Questions ({form.questions.length})
+                    </div>
+
+                    {/* Existing questions list */}
+                    {form.questions.length > 0 && (
+                        <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                            {form.questions.map((q, i) => (
+                                <div key={i} className="flex items-start justify-between gap-2 bg-black/30 rounded-lg p-3 border border-white/10">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate">{i + 1}. {q.question}</p>
+                                        <p className="text-[10px] text-[#39FF14] mt-0.5">✓ {q.options[q.correct]}</p>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                        <button onClick={() => editQuestion(i)} className="text-white/50 hover:text-[#39FF14]"><Pencil className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => removeQuestion(i)} className="text-white/50 hover:text-[#FF3B30]"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Question builder */}
+                    <div className="bg-black/20 rounded-lg p-4 border border-[#39FF14]/15 space-y-3">
+                        <div className="font-mono text-[10px] uppercase tracking-widest text-white/40">
+                            {editingQIdx !== null ? `Editing Question ${editingQIdx + 1}` : "Add a Question"}
+                        </div>
+                        <Field label="Question">
+                            <textarea value={qDraft.question} onChange={(e) => setQDraft({ ...qDraft, question: e.target.value })} rows={2} className={inputCls} />
+                        </Field>
+                        <Field label="Subject (for this question)">
+                            <select value={qDraft.subject} onChange={(e) => setQDraft({ ...qDraft, subject: e.target.value })} className={inputCls}>
+                                <option value="biology">Biology</option>
+                                <option value="physics">Physics</option>
+                                <option value="chemistry">Chemistry</option>
+                            </select>
+                        </Field>
+                        {qDraft.options.map((o, i) => (
+                            <Field key={i} label={`Option ${String.fromCharCode(65 + i)}`}>
+                                <div className="flex items-center gap-2">
+                                    <input type="radio" name="qcorrect" checked={qDraft.correct === i} onChange={() => setQDraft({ ...qDraft, correct: i })} className="accent-[#39FF14]" />
+                                    <input value={o} onChange={(e) => setOpt(i, e.target.value)} className={inputCls} />
+                                </div>
+                            </Field>
+                        ))}
+                        <Field label="Explanation (optional)">
+                            <textarea value={qDraft.explanation} onChange={(e) => setQDraft({ ...qDraft, explanation: e.target.value })} rows={2} className={inputCls} />
+                        </Field>
+                        <Field label="Image URL (optional)">
+                            <input value={qDraft.image_url} onChange={(e) => setQDraft({ ...qDraft, image_url: e.target.value })} placeholder="https://..." className={inputCls} />
+                        </Field>
+                        <div className="flex gap-2">
+                            <button onClick={addOrUpdateQuestion}
+                                className="flex-1 bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/40 font-bold uppercase tracking-widest text-xs py-2.5 rounded-lg hover:bg-[#00F0FF]/30 transition">
+                                {editingQIdx !== null ? "Update Question" : "+ Add Question to Quiz"}
+                            </button>
+                            {editingQIdx !== null && (
+                                <button onClick={() => { setQDraft({ ...EMPTY_LIVE_Q }); setEditingQIdx(null); }}
+                                    className="px-4 bg-white/5 text-white/60 border border-white/10 font-bold uppercase tracking-widest text-xs py-2.5 rounded-lg hover:bg-white/10 transition">
+                                    Cancel
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <button onClick={save} disabled={saving}
+                    className="w-full bg-[#39FF14] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition">
+                    {saving ? "Saving..." : initial ? "Update Live Quiz" : "Create Live Quiz"}
+                </button>
+            </div>
+        </Modal>
     );
 }
 
