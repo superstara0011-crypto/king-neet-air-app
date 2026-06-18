@@ -536,6 +536,26 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
     const [saving, setSaving] = useState(false);
     const [qDraft, setQDraft] = useState({ ...EMPTY_LIVE_Q });
     const [editingQIdx, setEditingQIdx] = useState(null);
+    const [uploadingQImg, setUploadingQImg] = useState(false);
+    const qImgRef = React.useRef(null);
+
+    const handleQImgUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { toast.error("Image 5MB se kam honi chahiye"); return; }
+        setUploadingQImg(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const r = await api.post("/admin/notes/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            setQDraft(q => ({ ...q, image_url: r.data.url }));
+            toast.success("Image uploaded!");
+        } catch { toast.error("Image upload fail hua"); }
+        finally {
+            setUploadingQImg(false);
+            if (qImgRef.current) qImgRef.current.value = "";
+        }
+    };
 
     const setOpt = (i, v) => {
         const opts = [...qDraft.options];
@@ -682,8 +702,21 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                         <Field label="Explanation (optional)">
                             <textarea value={qDraft.explanation} onChange={(e) => setQDraft({ ...qDraft, explanation: e.target.value })} rows={2} className={inputCls} />
                         </Field>
-                        <Field label="Image URL (optional)">
-                            <input value={qDraft.image_url} onChange={(e) => setQDraft({ ...qDraft, image_url: e.target.value })} placeholder="https://..." className={inputCls} />
+                        <Field label="Diagram/Image (optional)">
+                            <input ref={qImgRef} type="file" accept="image/*"
+                                onChange={handleQImgUpload} disabled={uploadingQImg}
+                                className={`${inputCls} cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[#00F0FF]/20 file:text-[#00F0FF] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#00F0FF]/30`}
+                            />
+                            {uploadingQImg && <div className="flex items-center gap-2 mt-2 text-xs text-[#00F0FF]"><Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading...</div>}
+                            {qDraft.image_url && (
+                                <div className="relative mt-2">
+                                    <img src={qDraft.image_url} alt="preview" className="w-full h-28 object-contain rounded-lg border border-white/10 bg-black/20" />
+                                    <button onClick={() => setQDraft(q => ({ ...q, image_url: "" }))}
+                                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500/80 transition">
+                                        <X className="w-3.5 h-3.5 text-white" />
+                                    </button>
+                                </div>
+                            )}
                         </Field>
                         <div className="flex gap-2">
                             <button onClick={addOrUpdateQuestion}
@@ -923,8 +956,9 @@ function QuestionModal({ initial, onClose, onSaved }) {
         year: initial.year || "", image_url: initial.image_url || "",
     } : { ...EMPTY_Q, options: ["", "", "", ""] });
     const [saving, setSaving] = useState(false);
+    const [uploadingImg, setUploadingImg] = useState(false);
+    const imgInputRef = React.useRef(null);
 
-    // Pre-select the Class/Branch group that contains this chapter (for edit mode)
     const [qGroup, setQGroup] = useState(() => {
         if (!initial?.chapter) return null;
         const g = getGroups(initial.subject).find(gr => gr.chapters.includes(initial.chapter));
@@ -949,6 +983,25 @@ function QuestionModal({ initial, onClose, onSaved }) {
     };
 
     const setOpt = (i, v) => setForm((f) => ({ ...f, options: f.options.map((o, idx) => (idx === i ? v : o)) }));
+
+    const handleImgUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { toast.error("Image under 5MB honi chahiye"); return; }
+        setUploadingImg(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const r = await api.post("/admin/notes/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            setForm(f => ({ ...f, image_url: r.data.url }));
+            toast.success("Image uploaded!");
+        } catch (e) {
+            toast.error("Image upload fail hua");
+        } finally {
+            setUploadingImg(false);
+            if (imgInputRef.current) imgInputRef.current.value = "";
+        }
+    };
 
     return (
         <Modal title={initial ? "Edit Question" : "Add Question"} onClose={onClose}>
@@ -981,9 +1034,21 @@ function QuestionModal({ initial, onClose, onSaved }) {
                 <Field label="Question Text">
                     <textarea value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} rows={2} className={inputCls} />
                 </Field>
-                <Field label="Image URL (optional — for diagram questions)">
-                    <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." className={inputCls} />
-                    {form.image_url && <img src={form.image_url} alt="preview" className="mt-2 w-full h-32 object-cover rounded-lg border border-white/10" />}
+                <Field label="Diagram/Image (optional)">
+                    <input ref={imgInputRef} type="file" accept="image/*"
+                        onChange={handleImgUpload} disabled={uploadingImg}
+                        className={`${inputCls} cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[#00F0FF]/20 file:text-[#00F0FF] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#00F0FF]/30`}
+                    />
+                    {uploadingImg && <div className="flex items-center gap-2 mt-2 text-xs text-[#00F0FF]"><Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading...</div>}
+                    {form.image_url && (
+                        <div className="relative mt-2">
+                            <img src={form.image_url} alt="preview" className="w-full h-36 object-contain rounded-lg border border-white/10 bg-black/20" />
+                            <button onClick={() => setForm(f => ({ ...f, image_url: "" }))}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500/80 transition">
+                                <X className="w-3.5 h-3.5 text-white" />
+                            </button>
+                        </div>
+                    )}
                 </Field>
                 {form.options.map((o, i) => (
                     <Field key={i} label={`Option ${String.fromCharCode(65+i)}${form.correct === i ? " ✓ Correct" : ""}`}>
