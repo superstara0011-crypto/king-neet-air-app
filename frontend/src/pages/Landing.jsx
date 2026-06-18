@@ -431,7 +431,7 @@ export default function Landing() {
             <header className="sticky top-0 z-50 px-4 sm:px-8 py-4 flex items-center justify-between border-b border-white/10"
                 style={{ background: "rgba(5,11,31,0.85)", backdropFilter: "blur(20px)" }}>
                 <div className="flex items-center gap-2">
-                    <Crown className="w-7 h-7 text-yellow-400" />
+                    <img src="/logo-navbar.png" alt="King NEET AIR" className="w-9 h-9 rounded-lg" />
                     <span className="font-black text-xl tracking-tight">
                         KING NEET <span className="text-yellow-400">AIR</span>
                     </span>
@@ -657,7 +657,7 @@ export default function Landing() {
             {/* ── FOOTER ── */}
             <footer className="border-t border-white/5 px-4 sm:px-8 py-8 text-center">
                 <div className="flex items-center justify-center gap-2 mb-3">
-                    <Crown className="w-5 h-5 text-yellow-400" />
+                    <img src="/logo-navbar.png" alt="King NEET AIR" className="w-7 h-7 rounded-lg" />
                     <span className="font-black text-lg">KING NEET <span className="text-yellow-400">AIR</span></span>
                 </div>
                 <p className="text-white/30 text-xs font-mono uppercase tracking-widest">

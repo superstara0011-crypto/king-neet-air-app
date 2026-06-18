@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import LevelBadge from "@/components/LevelBadge";
-import { LogOut, Crown } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 // Privacy: Show initials avatar, never Google photo
 function Avatar({ name, size = 9 }) {
@@ -38,7 +38,7 @@ export default function NavBar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
                 {/* Logo */}
                 <Link to="/dashboard" className="flex items-center gap-2">
-                    <Crown className="w-6 h-6 text-[#39FF14]" />
+                    <img src="/logo-navbar.png" alt="King NEET AIR" className="w-9 h-9 rounded-lg" />
                     <span className="font-heading font-black text-lg sm:text-xl tracking-tight">
                         KING NEET <span className="text-[#39FF14] glow-text">AIR</span>
                     </span>

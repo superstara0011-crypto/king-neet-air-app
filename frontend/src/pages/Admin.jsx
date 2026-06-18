@@ -6,7 +6,7 @@ import {
     Users, BookOpen, BarChart3, Loader2, Plus, Trash2, Pencil,
     Sparkles, X, ShieldAlert, FileText, Shield, Crown, Eye,
     Image, ChevronDown, ChevronUp, Lock, Unlock, Settings,
-    Radio, Play, Square, Clock, Calendar,
+    Radio, Play, Square, Clock, Calendar, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getGroups } from "@/constants/syllabus";
@@ -240,6 +240,7 @@ function Questions() {
     const [chapterFilter, setChapterFilter] = useState(null);
     const [editing, setEditing] = useState(null);
     const [aiOpen, setAiOpen] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
     const [search, setSearch] = useState("");
 
     const load = useCallback(async () => {
@@ -283,6 +284,10 @@ function Questions() {
                     ))}
                 </div>
                 <div className="flex gap-2">
+                    <button onClick={() => setBulkOpen(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest font-bold rounded-lg border border-[#00F0FF]/50 text-[#00F0FF] hover:bg-[#00F0FF]/10 transition">
+                        <Upload className="w-4 h-4" />Bulk Upload
+                    </button>
                     <button onClick={() => setAiOpen(true)}
                         className="inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest font-bold rounded-lg border border-[#B900FF]/50 text-[#B900FF] hover:bg-[#B900FF]/10 transition">
                         <Sparkles className="w-4 h-4" />AI Generate
@@ -378,6 +383,7 @@ function Questions() {
 
             {editing && <QuestionModal initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
             {aiOpen && <AIModal onClose={() => setAiOpen(false)} onDone={() => { setAiOpen(false); load(); }} />}
+            {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onDone={() => { setBulkOpen(false); load(); }} />}
         </div>
     );
 }
@@ -1134,6 +1140,87 @@ function NoteModal({ initial, onClose, onSaved }) {
                 <button onClick={save} disabled={saving}
                     className="w-full bg-[#39FF14] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition">
                     {saving ? "Saving..." : initial ? "Update Note" : "Add Note"}
+                </button>
+            </div>
+        </Modal>
+    );
+}
+
+function BulkUploadModal({ onClose, onDone }) {
+    const [file, setFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [result, setResult] = useState(null);
+
+    const handleUpload = async () => {
+        if (!file) { toast.error("Select a CSV or Excel file first"); return; }
+        setUploading(true);
+        setResult(null);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const r = await api.post("/admin/questions/bulk-upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            setResult(r.data);
+            if (r.data.inserted > 0) {
+                toast.success(`${r.data.inserted} questions added!`);
+            }
+        } catch (e) {
+            toast.error(e.response?.data?.detail || "Upload failed");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <Modal title="Bulk Upload Questions" onClose={onClose}>
+            <div className="space-y-4">
+                <div className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-lg p-4">
+                    <p className="text-xs text-white/60 leading-relaxed">
+                        Upload a CSV or Excel file with multiple questions at once. Required columns:
+                    </p>
+                    <p className="text-[11px] font-mono text-[#00F0FF] mt-2 break-words">
+                        subject, chapter, question, option_a, option_b, option_c, option_d, correct_answer
+                    </p>
+                    <p className="text-xs text-white/40 mt-2">
+                        Optional columns: explanation, is_pyq (yes/no), year, image_url
+                    </p>
+                    <p className="text-xs text-white/40 mt-1">
+                        correct_answer should be A, B, C, or D
+                    </p>
+                </div>
+
+                <Field label="Select CSV or Excel File">
+                    <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                        disabled={uploading}
+                        className={`${inputCls} cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[#00F0FF]/20 file:text-[#00F0FF] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#00F0FF]/30`}
+                    />
+                </Field>
+
+                {result && (
+                    <div className="space-y-2">
+                        <div className="bg-[#39FF14]/10 border border-[#39FF14]/30 rounded-lg p-3 flex items-center gap-2">
+                            <span className="text-[#39FF14] font-bold text-sm">✓ {result.inserted} questions added successfully</span>
+                        </div>
+                        {result.skipped_count > 0 && (
+                            <div className="bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-lg p-3">
+                                <p className="text-[#FF3B30] font-bold text-xs mb-2">{result.skipped_count} rows skipped:</p>
+                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                    {result.skipped.map((s, i) => (
+                                        <p key={i} className="text-[11px] text-white/50">Row {s.row}: {s.reason}</p>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <button onClick={handleUpload} disabled={uploading || !file}
+                    className="w-full bg-[#00F0FF] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition disabled:opacity-40">
+                    {uploading ? "Uploading..." : "Upload Questions"}
                 </button>
             </div>
         </Modal>

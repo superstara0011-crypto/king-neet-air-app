@@ -1,5 +1,7 @@
 import uuid
 import os
+import io
+import pandas as pd
 import cloudinary
 import cloudinary.uploader
 from typing import Optional
@@ -338,4 +340,99 @@ async def admin_upload_note_file(file: UploadFile = File(...), admin: User = Dep
         "url": url,
         "is_pdf": is_pdf,
         "file_name": file.filename,
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# BULK UPLOAD QUESTIONS — via CSV/Excel file
+# ════════════════════════════════════════════════════════════════════════════
+@router.post("/questions/bulk-upload")
+async def admin_bulk_upload_questions(file: UploadFile = File(...), admin: User = Depends(require_admin)):
+    filename = (file.filename or "").lower()
+    if not (filename.endswith(".csv") or filename.endswith(".xlsx") or filename.endswith(".xls")):
+        raise HTTPException(status_code=400, detail="Only CSV or Excel (.xlsx/.xls) files allowed")
+
+    contents = await file.read()
+
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read file: {str(e)}")
+
+    required_cols = {"subject", "chapter", "question", "option_a", "option_b", "option_c", "option_d", "correct_answer"}
+    missing = required_cols - set(c.strip().lower() for c in df.columns)
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing)}")
+
+    # Normalize column names (case-insensitive, strip spaces)
+    df.columns = [c.strip().lower() for c in df.columns]
+
+    inserted = 0
+    skipped = []
+    answer_map = {"a": 0, "b": 1, "c": 2, "d": 3}
+
+    for idx, row in df.iterrows():
+        try:
+            subject = str(row.get("subject", "")).strip().lower()
+            chapter = str(row.get("chapter", "")).strip()
+            question_text = str(row.get("question", "")).strip()
+            options = [
+                str(row.get("option_a", "")).strip(),
+                str(row.get("option_b", "")).strip(),
+                str(row.get("option_c", "")).strip(),
+                str(row.get("option_d", "")).strip(),
+            ]
+            correct_raw = str(row.get("correct_answer", "")).strip().lower()
+            correct = answer_map.get(correct_raw)
+
+            if not subject or not chapter or not question_text or correct is None or any(not o for o in options):
+                skipped.append({"row": int(idx) + 2, "reason": "Missing required field or invalid correct_answer"})
+                continue
+
+            explanation = str(row.get("explanation", "")).strip()
+            if explanation.lower() == "nan":
+                explanation = ""
+
+            is_pyq_raw = str(row.get("is_pyq", "")).strip().lower()
+            is_pyq = is_pyq_raw in ("yes", "true", "1")
+
+            year_raw = row.get("year")
+            year = None
+            if pd.notna(year_raw) and str(year_raw).strip() not in ("", "nan"):
+                try:
+                    year = int(float(year_raw))
+                except Exception:
+                    year = None
+
+            image_url = str(row.get("image_url", "")).strip()
+            if image_url.lower() == "nan":
+                image_url = ""
+
+            doc = {
+                "question_id": f"q_{uuid.uuid4().hex[:12]}",
+                "subject": subject,
+                "chapter": chapter,
+                "question": question_text,
+                "options": options,
+                "correct": correct,
+                "explanation": explanation,
+                "is_pyq": is_pyq,
+                "year": year,
+                "image_url": image_url,
+                "source": "bulk_upload",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.questions.insert_one(doc)
+            inserted += 1
+
+        except Exception as e:
+            skipped.append({"row": int(idx) + 2, "reason": str(e)})
+
+    return {
+        "inserted": inserted,
+        "skipped_count": len(skipped),
+        "skipped": skipped[:20],  # only show first 20 errors to avoid huge response
     }
