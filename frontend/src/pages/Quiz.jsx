@@ -151,6 +151,16 @@ export default function Quiz() {
 
             <div className="glass-card p-6 sm:p-8 fade-up" key={q.id}>
                 <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-2">Chapter · {q.chapter}</p>
+
+                {q.image_url && (
+                    <img
+                        src={q.image_url}
+                        alt="Question diagram"
+                        className="w-full max-h-72 object-contain rounded-xl border border-white/10 bg-white mb-5"
+                        data-testid="quiz-question-image"
+                    />
+                )}
+
                 <h2 className="font-heading text-xl sm:text-2xl font-bold leading-snug mb-6" data-testid="quiz-question-text">
                     {q.question}
                 </h2>

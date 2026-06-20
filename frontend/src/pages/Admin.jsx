@@ -9,7 +9,7 @@ import {
     Radio, Play, Square, Clock, Calendar, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getGroups } from "@/constants/syllabus";
+import { getGroups, normalizeChapter } from "@/constants/syllabus";
 
 const EMPTY_Q = {
     subject: "biology", chapter: "", question: "",
@@ -268,7 +268,7 @@ function Questions() {
     const filtered = (questions || []).filter(q => {
         const matchesSearch = q.question?.toLowerCase().includes(search.toLowerCase()) ||
             q.chapter?.toLowerCase().includes(search.toLowerCase());
-        const matchesChapter = !chapterFilter || q.chapter === chapterFilter;
+        const matchesChapter = !chapterFilter || normalizeChapter(q.chapter) === normalizeChapter(chapterFilter);
         return matchesSearch && matchesChapter;
     });
 

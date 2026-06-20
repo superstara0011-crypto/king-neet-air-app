@@ -13,7 +13,7 @@ export const SYLLABUS = {
     color: "#39FF14",
     classes: {
       "11th": [
-        "What is Living",
+        "The Living World",
         "Biological Classification",
         "Plant Kingdom",
         "Animal Kingdom",
@@ -163,3 +163,26 @@ export function getGroups(subject) {
 }
 
 export const SUBJECT_LIST = Object.keys(SYLLABUS); // ["biology", "physics", "chemistry"]
+
+/**
+ * Some chapters have more than one commonly-used name (NCERT vs popular usage,
+ * old syllabus vs new, etc). This map lets matching be forgiving — if a
+ * question/note was saved with an older/alternate name, it still shows up
+ * under the correct chapter filter.
+ *
+ * Format: "alternate name" -> "canonical name used in SYLLABUS above"
+ */
+export const CHAPTER_ALIASES = {
+  "what is living": "The Living World",
+  "the living world": "The Living World",
+};
+
+/**
+ * Normalizes a chapter name for comparison — lowercases, trims, and
+ * resolves known aliases to the canonical name.
+ */
+export function normalizeChapter(name) {
+  if (!name) return "";
+  const key = name.trim().toLowerCase();
+  return CHAPTER_ALIASES[key] || name.trim();
+}
