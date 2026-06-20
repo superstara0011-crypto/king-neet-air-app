@@ -549,6 +549,7 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
     const [saving, setSaving] = useState(false);
     const [qDraft, setQDraft] = useState({ ...EMPTY_LIVE_Q });
     const [bulkUploading, setBulkUploading] = useState(false);
+    const [currentQuizId, setCurrentQuizId] = useState(initial?.id || null);
     const [bulkResult, setBulkResult] = useState(null);
     const bulkFileRef = React.useRef(null);
 
@@ -625,8 +626,11 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                 xp_per_correct: parseInt(form.xp_per_correct),
                 xp_penalty_wrong: parseInt(form.xp_penalty_wrong),
             };
-            if (initial) await api.put(`/admin/live-quiz/${initial.id}`, payload);
-            else await api.post("/admin/live-quiz", payload);
+            if (currentQuizId) await api.put(`/admin/live-quiz/${currentQuizId}`, payload);
+            else {
+                const r = await api.post("/admin/live-quiz", payload);
+                setCurrentQuizId(r.data.id);
+            }
             toast.success(initial ? "Quiz updated" : "Quiz created");
             onSaved();
         } catch (e) {
@@ -637,28 +641,70 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
     const handleBulkUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (!initial?.id) {
-            toast.error("Save the quiz first, then reopen it to bulk upload questions");
-            if (bulkFileRef.current) bulkFileRef.current.value = "";
-            return;
+
+        let quizId = currentQuizId;
+
+        // If quiz hasn't been saved yet, auto-save it first (so bulk upload can work in one go)
+        if (!quizId) {
+            if (!form.title.trim()) {
+                toast.error("Add a Quiz Title first, then upload");
+                if (bulkFileRef.current) bulkFileRef.current.value = "";
+                return;
+            }
+            setBulkUploading(true);
+            try {
+                const payload = {
+                    ...form,
+                    starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
+                    ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+                    duration_seconds: parseInt(form.duration_seconds) || 0,
+                    xp_per_correct: parseInt(form.xp_per_correct),
+                    xp_penalty_wrong: parseInt(form.xp_penalty_wrong),
+                    questions: form.questions.length > 0 ? form.questions : [],
+                };
+                // Backend requires at least 1 question to create — add a temporary placeholder if none exist yet,
+                // bulk upload will add real ones right after.
+                if (payload.questions.length === 0) {
+                    payload.questions = [{
+                        question: "Placeholder — will be replaced by bulk upload",
+                        options: ["A", "B", "C", "D"], correct: 0, explanation: "", image_url: "", subject: form.subject === "mixed" ? "biology" : form.subject,
+                    }];
+                }
+                const r = await api.post("/admin/live-quiz", payload);
+                quizId = r.data.id;
+                setCurrentQuizId(quizId);
+                toast.success("Quiz created — uploading questions now…");
+            } catch (err) {
+                toast.error(err.response?.data?.detail || "Could not create quiz");
+                setBulkUploading(false);
+                if (bulkFileRef.current) bulkFileRef.current.value = "";
+                return;
+            }
         }
+
         setBulkUploading(true);
         setBulkResult(null);
         try {
             const fd = new FormData();
             fd.append("file", file);
-            const r = await api.post(`/admin/live-quiz/${initial.id}/bulk-upload`, fd, {
+            const r = await api.post(`/admin/live-quiz/${quizId}/bulk-upload`, fd, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setBulkResult(r.data);
             if (r.data.inserted > 0) {
                 toast.success(`${r.data.inserted} questions added!`);
-                // Refetch this quiz so the visible question list includes the new ones
                 try {
                     const refreshed = await api.get("/admin/live-quiz");
-                    const updated = refreshed.data.find(q => q.id === initial.id);
-                    if (updated) setForm(f => ({ ...f, questions: updated.questions || f.questions }));
-                } catch { /* non-fatal — list will still refresh once modal closes */ }
+                    const updated = refreshed.data.find(q => q.id === quizId);
+                    if (updated) {
+                        // Remove the placeholder question if it's still there and real questions exist now
+                        let qs = updated.questions || [];
+                        if (qs.length > 1) {
+                            qs = qs.filter(q => q.question !== "Placeholder — will be replaced by bulk upload");
+                        }
+                        setForm(f => ({ ...f, questions: qs }));
+                    }
+                } catch { /* non-fatal */ }
             }
         } catch (err) {
             toast.error(err.response?.data?.detail || "Bulk upload failed");
@@ -726,12 +772,12 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                         Questions ({form.questions.length})
                     </div>
 
-                    {/* ── Bulk Upload (only works once quiz is saved at least once) ── */}
+                    {/* ── Bulk Upload — auto-saves the quiz on first use if not saved yet ── */}
                     <div className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-lg p-3 mb-4">
                         <div className="flex items-center justify-between gap-3 mb-2">
                             <span className="text-xs font-bold text-[#00F0FF]">📤 Bulk Upload Questions</span>
-                            {!initial?.id && (
-                                <span className="text-[10px] text-[#FFD700]">Save quiz first →</span>
+                            {!currentQuizId && (
+                                <span className="text-[10px] text-white/30">Add a title above, then upload</span>
                             )}
                         </div>
                         <input
@@ -739,7 +785,7 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                             type="file"
                             accept=".csv,.xlsx,.xls"
                             onChange={handleBulkUpload}
-                            disabled={bulkUploading || !initial?.id}
+                            disabled={bulkUploading}
                             className={`${inputCls} cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[#00F0FF]/20 file:text-[#00F0FF] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#00F0FF]/30 disabled:opacity-40`}
                         />
                         <p className="text-[10px] text-white/30 mt-1.5">
@@ -831,7 +877,7 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
 
                 <button onClick={save} disabled={saving}
                     className="w-full bg-[#39FF14] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition">
-                    {saving ? "Saving..." : initial ? "Update Live Quiz" : "Create Live Quiz"}
+                    {saving ? "Saving..." : currentQuizId ? "Update Live Quiz" : "Create Live Quiz"}
                 </button>
             </div>
         </Modal>
