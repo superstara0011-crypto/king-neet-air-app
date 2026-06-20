@@ -23,9 +23,11 @@ Students can attempt it any time inside [starts_at, ends_at] (or always, if
 """
 
 import uuid
+import io
+import pandas as pd
 from typing import Optional, List
 from datetime import datetime, timezone
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 
 from database import db
@@ -50,7 +52,7 @@ class LiveQuizCreate(BaseModel):
     title: str
     description: str = ""
     subject: str = "mixed"          # biology / physics / chemistry / mixed
-    duration_minutes: int = 30      # how long a student gets once they start
+    duration_seconds: int = 1800    # how long a student gets once they start (default 30 min)
     starts_at: Optional[str] = None  # ISO datetime string, None = manual go-live only
     ends_at: Optional[str] = None    # ISO datetime string, None = no end (open until manually ended)
     xp_per_correct: int = 4
@@ -62,7 +64,7 @@ class LiveQuizUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     subject: Optional[str] = None
-    duration_minutes: Optional[int] = None
+    duration_seconds: Optional[int] = None
     starts_at: Optional[str] = None
     ends_at: Optional[str] = None
     xp_per_correct: Optional[int] = None
@@ -114,7 +116,7 @@ def _public_quiz(quiz):
         "title": quiz["title"],
         "description": quiz.get("description", ""),
         "subject": quiz.get("subject", "mixed"),
-        "duration_minutes": quiz.get("duration_minutes", 30),
+        "duration_seconds": quiz.get("duration_seconds", 1800),
         "starts_at": quiz.get("starts_at"),
         "ends_at": quiz.get("ends_at"),
         "question_count": len(quiz.get("questions", [])),
@@ -150,7 +152,7 @@ async def admin_create_live_quiz(payload: LiveQuizCreate, admin: User = Depends(
         "title": payload.title.strip(),
         "description": payload.description.strip(),
         "subject": payload.subject,
-        "duration_minutes": payload.duration_minutes,
+        "duration_seconds": payload.duration_seconds,
         "starts_at": payload.starts_at,
         "ends_at": payload.ends_at,
         "xp_per_correct": payload.xp_per_correct,
@@ -260,7 +262,7 @@ async def get_live_quiz(quiz_id: str, request: Request):
         "id": doc["quiz_id"],
         "title": doc["title"],
         "description": doc.get("description", ""),
-        "duration_minutes": doc.get("duration_minutes", 30),
+        "duration_seconds": doc.get("duration_seconds", 1800),
         "questions": safe_questions,
     }
 
@@ -342,4 +344,91 @@ async def submit_live_quiz(quiz_id: str, payload: SubmitAnswers, request: Reques
         "total": len(questions),
         "xp_earned": xp_earned,
         "results": results,
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ADMIN — Bulk upload questions into an EXISTING live quiz (appends, doesn't replace)
+# Same CSV/Excel format as the regular Questions bulk upload:
+#   subject, chapter, question, option_a, option_b, option_c, option_d,
+#   correct_answer, explanation (optional), image_url (optional)
+# is_pyq / year columns are accepted but ignored here (not relevant to live quizzes).
+# ════════════════════════════════════════════════════════════════════════════
+@router.post("/admin/live-quiz/{quiz_id}/bulk-upload")
+async def admin_bulk_upload_live_quiz_questions(
+    quiz_id: str, file: UploadFile = File(...), admin: User = Depends(require_admin)
+):
+    quiz = await db.live_quizzes.find_one({"quiz_id": quiz_id})
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    filename = (file.filename or "").lower()
+    if not (filename.endswith(".csv") or filename.endswith(".xlsx") or filename.endswith(".xls")):
+        raise HTTPException(status_code=400, detail="Only CSV or Excel (.xlsx/.xls) files allowed")
+
+    contents = await file.read()
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read file: {str(e)}")
+
+    required_cols = {"subject", "chapter", "question", "option_a", "option_b", "option_c", "option_d", "correct_answer"}
+    df.columns = [c.strip().lower() for c in df.columns]
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing)}")
+
+    answer_map = {"a": 0, "b": 1, "c": 2, "d": 3}
+    new_questions = []
+    skipped = []
+
+    for idx, row in df.iterrows():
+        try:
+            subject = str(row.get("subject", "")).strip().lower()
+            question_text = str(row.get("question", "")).strip()
+            options = [
+                str(row.get("option_a", "")).strip(),
+                str(row.get("option_b", "")).strip(),
+                str(row.get("option_c", "")).strip(),
+                str(row.get("option_d", "")).strip(),
+            ]
+            correct_raw = str(row.get("correct_answer", "")).strip().lower()
+            correct = answer_map.get(correct_raw)
+
+            if not question_text or correct is None or any(not o for o in options):
+                skipped.append({"row": int(idx) + 2, "reason": "Missing required field or invalid correct_answer"})
+                continue
+
+            explanation = str(row.get("explanation", "")).strip()
+            if explanation.lower() == "nan":
+                explanation = ""
+
+            image_url = str(row.get("image_url", "")).strip()
+            if image_url.lower() == "nan":
+                image_url = ""
+
+            new_questions.append({
+                "question": question_text,
+                "options": options,
+                "correct": correct,
+                "explanation": explanation,
+                "image_url": image_url,
+                "subject": subject or quiz.get("subject", "mixed"),
+            })
+        except Exception as e:
+            skipped.append({"row": int(idx) + 2, "reason": str(e)})
+
+    if new_questions:
+        await db.live_quizzes.update_one(
+            {"quiz_id": quiz_id},
+            {"$push": {"questions": {"$each": new_questions}}}
+        )
+
+    return {
+        "inserted": len(new_questions),
+        "skipped_count": len(skipped),
+        "skipped": skipped[:20],
     }

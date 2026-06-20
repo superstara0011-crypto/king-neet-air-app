@@ -29,7 +29,7 @@ const EMPTY_LIVE_Q = {
 
 const EMPTY_LIVE_QUIZ = {
     title: "", description: "", subject: "mixed",
-    duration_minutes: 30, starts_at: "", ends_at: "",
+    duration_seconds: 1800, starts_at: "", ends_at: "",
     xp_per_correct: 4, xp_penalty_wrong: 1, questions: [],
 };
 
@@ -389,6 +389,15 @@ function Questions() {
 }
 
 // ─── LIVE QUIZ ──────────────────────────────────────────────────────
+function formatDuration(totalSeconds) {
+    const s = parseInt(totalSeconds) || 0;
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    if (mins === 0) return `${secs}s`;
+    if (secs === 0) return `${mins}m`;
+    return `${mins}m ${secs}s`;
+}
+
 function LiveQuizTab() {
     const [quizzes, setQuizzes] = useState(null);
     const [editing, setEditing] = useState(null);
@@ -480,7 +489,7 @@ function LiveQuizTab() {
                                             <BookOpen className="w-3 h-3" />{q.question_count} Qs
                                         </span>
                                         <span className="text-white/40 font-mono text-xs flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />{q.duration_minutes} min
+                                            <Clock className="w-3 h-3" />{formatDuration(q.duration_seconds)}
                                         </span>
                                     </div>
                                     <h3 className="font-heading font-bold text-base mb-1">{q.title}</h3>
@@ -524,17 +533,31 @@ function LiveQuizTab() {
 }
 
 function LiveQuizModal({ initial, onClose, onSaved }) {
+    const initialSeconds = initial ? (initial.duration_seconds ?? 1800) : 1800;
     const [form, setForm] = useState(initial ? {
         title: initial.title, description: initial.description || "",
-        subject: initial.subject, duration_minutes: initial.duration_minutes,
+        subject: initial.subject, duration_seconds: initialSeconds,
         starts_at: initial.starts_at ? initial.starts_at.slice(0, 16) : "",
         ends_at: initial.ends_at ? initial.ends_at.slice(0, 16) : "",
         xp_per_correct: initial.xp_per_correct ?? 4,
         xp_penalty_wrong: initial.xp_penalty_wrong ?? 1,
         questions: initial.questions || [],
     } : { ...EMPTY_LIVE_QUIZ });
+    // Separate min/sec inputs for a friendlier UI — kept in sync with form.duration_seconds
+    const [durMin, setDurMin] = useState(Math.floor(initialSeconds / 60));
+    const [durSec, setDurSec] = useState(initialSeconds % 60);
     const [saving, setSaving] = useState(false);
     const [qDraft, setQDraft] = useState({ ...EMPTY_LIVE_Q });
+    const [bulkUploading, setBulkUploading] = useState(false);
+    const [bulkResult, setBulkResult] = useState(null);
+    const bulkFileRef = React.useRef(null);
+
+    // Keep form.duration_seconds in sync whenever minutes/seconds inputs change
+    useEffect(() => {
+        const mins = parseInt(durMin) || 0;
+        const secs = parseInt(durSec) || 0;
+        setForm(f => ({ ...f, duration_seconds: mins * 60 + secs }));
+    }, [durMin, durSec]);
     const [editingQIdx, setEditingQIdx] = useState(null);
     const [uploadingQImg, setUploadingQImg] = useState(false);
     const qImgRef = React.useRef(null);
@@ -598,7 +621,7 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                 ...form,
                 starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
                 ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
-                duration_minutes: parseInt(form.duration_minutes),
+                duration_seconds: parseInt(form.duration_seconds) || 0,
                 xp_per_correct: parseInt(form.xp_per_correct),
                 xp_penalty_wrong: parseInt(form.xp_penalty_wrong),
             };
@@ -609,6 +632,40 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
         } catch (e) {
             toast.error(e.response?.data?.detail || "Failed to save");
         } finally { setSaving(false); }
+    };
+
+    const handleBulkUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!initial?.id) {
+            toast.error("Save the quiz first, then reopen it to bulk upload questions");
+            if (bulkFileRef.current) bulkFileRef.current.value = "";
+            return;
+        }
+        setBulkUploading(true);
+        setBulkResult(null);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const r = await api.post(`/admin/live-quiz/${initial.id}/bulk-upload`, fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            setBulkResult(r.data);
+            if (r.data.inserted > 0) {
+                toast.success(`${r.data.inserted} questions added!`);
+                // Refetch this quiz so the visible question list includes the new ones
+                try {
+                    const refreshed = await api.get("/admin/live-quiz");
+                    const updated = refreshed.data.find(q => q.id === initial.id);
+                    if (updated) setForm(f => ({ ...f, questions: updated.questions || f.questions }));
+                } catch { /* non-fatal — list will still refresh once modal closes */ }
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.detail || "Bulk upload failed");
+        } finally {
+            setBulkUploading(false);
+            if (bulkFileRef.current) bulkFileRef.current.value = "";
+        }
     };
 
     return (
@@ -630,8 +687,19 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                             <option value="chemistry">Chemistry</option>
                         </select>
                     </Field>
-                    <Field label="Duration (minutes)">
-                        <input type="number" min={5} value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className={inputCls} />
+                    <Field label="Duration (Min : Sec)">
+                        <div className="flex items-center gap-2">
+                            <input type="number" min={0} value={durMin}
+                                onChange={(e) => setDurMin(e.target.value)}
+                                placeholder="Min" className={inputCls} />
+                            <span className="text-white/40 font-bold">:</span>
+                            <input type="number" min={0} max={59} value={durSec}
+                                onChange={(e) => setDurSec(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+                                placeholder="Sec" className={inputCls} />
+                        </div>
+                        <p className="text-[10px] text-white/30 mt-1">
+                            Total: {formatDuration(form.duration_seconds)} — use 0 min for quick-fire rounds (e.g. 15s)
+                        </p>
                     </Field>
                 </div>
 
@@ -656,6 +724,34 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                 <div className="border-t border-white/10 pt-4">
                     <div className="font-mono text-xs uppercase tracking-widest text-[#39FF14] mb-3">
                         Questions ({form.questions.length})
+                    </div>
+
+                    {/* ── Bulk Upload (only works once quiz is saved at least once) ── */}
+                    <div className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-lg p-3 mb-4">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                            <span className="text-xs font-bold text-[#00F0FF]">📤 Bulk Upload Questions</span>
+                            {!initial?.id && (
+                                <span className="text-[10px] text-[#FFD700]">Save quiz first →</span>
+                            )}
+                        </div>
+                        <input
+                            ref={bulkFileRef}
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={handleBulkUpload}
+                            disabled={bulkUploading || !initial?.id}
+                            className={`${inputCls} cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[#00F0FF]/20 file:text-[#00F0FF] file:text-xs file:font-bold file:uppercase file:cursor-pointer hover:file:bg-[#00F0FF]/30 disabled:opacity-40`}
+                        />
+                        <p className="text-[10px] text-white/30 mt-1.5">
+                            Same format as Questions tab: subject, chapter, question, option_a-d, correct_answer (A/B/C/D), explanation, image_url
+                        </p>
+                        {bulkUploading && <div className="flex items-center gap-2 mt-2 text-xs text-[#00F0FF]"><Loader2 className="w-3.5 h-3.5 animate-spin" />Uploading...</div>}
+                        {bulkResult && (
+                            <div className="mt-2 text-xs">
+                                <span className="text-[#39FF14] font-bold">✓ {bulkResult.inserted} added</span>
+                                {bulkResult.skipped_count > 0 && <span className="text-[#FF3B30] ml-2">· {bulkResult.skipped_count} skipped</span>}
+                            </div>
+                        )}
                     </div>
 
                     {/* Existing questions list */}

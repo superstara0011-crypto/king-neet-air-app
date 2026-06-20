@@ -4,6 +4,15 @@ import { api } from "@/lib/api";
 import { Loader2, Radio, Clock, BookOpen, ChevronRight, CheckCircle2, XCircle, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
+function formatDur(totalSeconds) {
+    const s = parseInt(totalSeconds) || 0;
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    if (mins === 0) return `${secs}s`;
+    if (secs === 0) return `${mins} min`;
+    return `${mins}m ${secs}s`;
+}
+
 // ─── LIST PAGE — /live-quiz ──────────────────────────────────────────────
 export function LiveQuizList() {
     const [quizzes, setQuizzes] = useState(null);
@@ -63,7 +72,7 @@ export function LiveQuizList() {
                                 {q.description && <p className="text-white/50 text-sm mb-2">{q.description}</p>}
                                 <div className="flex items-center gap-4 text-xs text-white/40 font-mono">
                                     <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{q.question_count} Questions</span>
-                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{q.duration_minutes} min</span>
+                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDur(q.duration_seconds)}</span>
                                 </div>
                                 {q.starts_at && q.status === "upcoming" && (
                                     <div className="mt-2 text-xs text-[#FFD700] font-mono">
@@ -97,7 +106,7 @@ export default function LiveQuizAttempt() {
         api.get(`/live-quiz/${id}`).then(r => {
             setQuiz(r.data);
             setAnswers(new Array(r.data.questions.length).fill(-1));
-            setTimeLeft(r.data.duration_minutes * 60);
+            setTimeLeft(r.data.duration_seconds);
         }).catch(e => setError(e.response?.data?.detail || "Failed to load quiz"));
     }, [id]);
 
@@ -207,8 +216,8 @@ export default function LiveQuizAttempt() {
                         <div className="text-xs text-white/40">Questions</div>
                     </div>
                     <div>
-                        <div className="font-black text-2xl text-[#FFD700]">{quiz.duration_minutes}</div>
-                        <div className="text-xs text-white/40">Minutes</div>
+                        <div className="font-black text-2xl text-[#FFD700]">{formatDur(quiz.duration_seconds)}</div>
+                        <div className="text-xs text-white/40">Duration</div>
                     </div>
                 </div>
                 <p className="text-xs text-white/40 mb-6">⚠️ Once started, timer can't be paused. You can only attempt this quiz once.</p>
