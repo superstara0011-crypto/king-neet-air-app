@@ -592,6 +592,10 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
             toast.error("Fill question and all 4 options");
             return;
         }
+        if (uploadingQImg) {
+            toast.error("Image abhi upload ho rahi hai, thoda wait karo");
+            return;
+        }
         const qs = [...form.questions];
         if (editingQIdx !== null) {
             qs[editingQIdx] = qDraft;
@@ -861,9 +865,9 @@ function LiveQuizModal({ initial, onClose, onSaved }) {
                             )}
                         </Field>
                         <div className="flex gap-2">
-                            <button onClick={addOrUpdateQuestion}
-                                className="flex-1 bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/40 font-bold uppercase tracking-widest text-xs py-2.5 rounded-lg hover:bg-[#00F0FF]/30 transition">
-                                {editingQIdx !== null ? "Update Question" : "+ Add Question to Quiz"}
+                            <button onClick={addOrUpdateQuestion} disabled={uploadingQImg}
+                                className="flex-1 bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/40 font-bold uppercase tracking-widest text-xs py-2.5 rounded-lg hover:bg-[#00F0FF]/30 transition disabled:opacity-50">
+                                {uploadingQImg ? "Waiting for image..." : editingQIdx !== null ? "Update Question" : "+ Add Question to Quiz"}
                             </button>
                             {editingQIdx !== null && (
                                 <button onClick={() => { setQDraft({ ...EMPTY_LIVE_Q }); setEditingQIdx(null); }}
@@ -1112,6 +1116,10 @@ function QuestionModal({ initial, onClose, onSaved }) {
             toast.error("Fill question, chapter and all 4 options");
             return;
         }
+        if (uploadingImg) {
+            toast.error("Image abhi upload ho rahi hai, thoda wait karo phir Save karo");
+            return;
+        }
         setSaving(true);
         const payload = { ...form, year: form.year ? parseInt(form.year) : null };
         try {
@@ -1212,9 +1220,9 @@ function QuestionModal({ initial, onClose, onSaved }) {
                         <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} className={inputCls} />
                     </Field>
                 </div>
-                <button onClick={save} disabled={saving}
-                    className="w-full bg-[#39FF14] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition">
-                    {saving ? "Saving..." : initial ? "Update Question" : "Add Question"}
+                <button onClick={save} disabled={saving || uploadingImg}
+                    className="w-full bg-[#39FF14] text-black font-bold uppercase tracking-widest py-3 rounded-lg hover:opacity-90 transition disabled:opacity-50">
+                    {uploadingImg ? "Waiting for image upload..." : saving ? "Saving..." : initial ? "Update Question" : "Add Question"}
                 </button>
             </div>
         </Modal>
