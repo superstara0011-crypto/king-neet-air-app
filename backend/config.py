@@ -2,10 +2,11 @@ import os
 
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 
-# Emails that are automatically granted admin access on login (comma-separated env)
+# Emails that are automatically granted admin access on login.
+# Set in Render env vars as: ADMIN_EMAILS=email1@gmail.com,email2@gmail.com
 ADMIN_EMAILS = {
     e.strip().lower()
-    for e in os.environ.get('supersara0011@gmail.com', '').split(',')
+    for e in os.environ.get('ADMIN_EMAILS', '').split(',')
     if e.strip()
 }
 

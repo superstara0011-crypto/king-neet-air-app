@@ -23,6 +23,10 @@ async def get_current_user(request: Request) -> Optional[User]:
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
+        # ✅ Security: delete the expired session row instead of leaving it behind.
+        # Prevents the user_sessions collection from accumulating stale/expired
+        # tokens indefinitely (cleanup + slightly reduces attack surface).
+        await db.user_sessions.delete_one({"session_token": token})
         return None
     user_doc = await db.users.find_one({"user_id": sess["user_id"]}, {"_id": 0})
     if not user_doc:

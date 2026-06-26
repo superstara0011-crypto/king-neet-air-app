@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from database import db
 from models import User, QuestionIn, AIGenerateRequest
 from deps import require_admin
+from config import ADMIN_EMAILS
 from services.levels import get_level
 from services.questions import ai_generate_questions, ai_daily_remaining, ai_generated_today
 
@@ -112,7 +113,7 @@ async def list_admin_users(admin: User = Depends(require_admin)):
 @router.post("/admin-users")
 async def add_admin_user(payload: AdminUserIn, admin: User = Depends(require_admin)):
     # Only super admin can add admins
-    if admin.email not in ["supersara0011@gmail.com"] and admin.admin_role != "super_admin":
+    if admin.email.lower() not in ADMIN_EMAILS and admin.admin_role != "super_admin":
         raise HTTPException(status_code=403, detail="Only Super Admin can add admins")
 
     valid_roles = ["content_admin", "analytics_admin", "test_admin"]
@@ -132,7 +133,7 @@ async def add_admin_user(payload: AdminUserIn, admin: User = Depends(require_adm
 
 @router.delete("/admin-users/{user_id}")
 async def remove_admin_user(user_id: str, admin: User = Depends(require_admin)):
-    if admin.email not in ["supersara0011@gmail.com"] and admin.admin_role != "super_admin":
+    if admin.email.lower() not in ADMIN_EMAILS and admin.admin_role != "super_admin":
         raise HTTPException(status_code=403, detail="Only Super Admin can remove admins")
 
     target = await db.users.find_one({"user_id": user_id})

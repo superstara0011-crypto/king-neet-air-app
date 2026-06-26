@@ -7,6 +7,8 @@ import cloudinary.uploader
 from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database import db
 from config import ADMIN_EMAILS
@@ -16,6 +18,7 @@ from services.levels import get_level
 from services.premium import get_top_user_ids
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 # ── Cloudinary config (for profile picture uploads) ──────────────────────────
 cloudinary.config(
@@ -48,6 +51,7 @@ async def google_auth_url(request: Request):
 
 
 @router.post("/auth/google/callback")
+@limiter.limit("10/minute")
 async def google_callback(request: Request, response: Response):
     import os
     body = await request.json()
