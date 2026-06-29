@@ -68,6 +68,27 @@ async def admin_stats(admin: User = Depends(require_admin)):
     }
 
 
+@router.get("/chapter-progress")
+async def admin_chapter_progress(admin: User = Depends(require_admin)):
+    """
+    Returns question count per chapter, grouped by subject — used by the
+    Admin Panel's content progress checklist so you can see at a glance
+    which chapters still need questions added.
+    """
+    pipeline = [
+        {"$group": {"_id": {"subject": "$subject", "chapter": "$chapter"}, "count": {"$sum": 1}}},
+    ]
+    rows = await db.questions.aggregate(pipeline).to_list(500)
+
+    counts = {}  # subject -> { chapter -> count }
+    for r in rows:
+        subj = r["_id"]["subject"]
+        chapter = r["_id"]["chapter"]
+        counts.setdefault(subj, {})[chapter] = r["count"]
+
+    return counts
+
+
 # ─── USERS ──────────────────────────────────────────────────────────
 @router.get("/users")
 async def admin_list_users(admin: User = Depends(require_admin)):

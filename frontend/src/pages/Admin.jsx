@@ -119,8 +119,10 @@ export default function Admin() {
 // ─── OVERVIEW ───────────────────────────────────────────────────────
 function Overview() {
     const [stats, setStats] = useState(null);
+    const [chapterProgress, setChapterProgress] = useState(null);
     useEffect(() => {
         api.get("/admin/stats").then((r) => setStats(r.data)).catch(() => setStats(null));
+        api.get("/admin/chapter-progress").then((r) => setChapterProgress(r.data)).catch(() => setChapterProgress({}));
     }, []);
     if (!stats) return <Spinner />;
 
@@ -131,6 +133,22 @@ function Overview() {
         { label: "AI Generated", value: stats.total_ai, color: "#B900FF" },
         { label: "Quiz Attempts", value: stats.total_attempts, color: "#FF007A" },
     ];
+
+    // Build full chapter checklist from the syllabus tree, marking how many
+    // questions exist for each chapter (0 = still needs content).
+    const buildChecklist = (subject) => {
+        const groups = getGroups(subject);
+        const subjCounts = chapterProgress?.[subject] || {};
+        return groups.flatMap(g =>
+            g.chapters.map(ch => ({
+                group: g.label,
+                chapter: ch,
+                count: subjCounts[normalizeChapter(ch)] ?? subjCounts[ch] ?? 0,
+            }))
+        );
+    };
+
+    const TARGET_PER_CHAPTER = 15; // matches the suggested content plan
 
     return (
         <div>
@@ -151,7 +169,7 @@ function Overview() {
                     </div>
                 ))}
             </div>
-            <div className="glass-card p-5">
+            <div className="glass-card p-5 mb-8">
                 <div className="font-mono text-xs uppercase tracking-widest text-white/50 mb-3">AI Generation Today</div>
                 <div className="flex items-center gap-4">
                     <div>
@@ -165,6 +183,42 @@ function Overview() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Chapter Content Progress Checklist ── */}
+            <h2 className="font-heading text-xl font-bold mb-3 uppercase tracking-wider">Chapter Content Progress</h2>
+            <p className="text-white/40 text-sm mb-4">Target: {TARGET_PER_CHAPTER}+ questions per chapter · ✅ done · 🟡 started · ⬜ empty</p>
+            {!chapterProgress ? <Spinner /> : (
+                <div className="grid sm:grid-cols-3 gap-5">
+                    {["biology", "physics", "chemistry"].map(subj => {
+                        const checklist = buildChecklist(subj);
+                        const done = checklist.filter(c => c.count >= TARGET_PER_CHAPTER).length;
+                        return (
+                            <div key={subj} className="glass-card p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="font-bold text-sm capitalize" style={{ color: subj === "biology" ? "#39FF14" : subj === "physics" ? "#00F0FF" : "#B900FF" }}>
+                                        {SUBJECT_LABEL[subj] || subj}
+                                    </span>
+                                    <span className="font-mono text-xs text-white/40">{done}/{checklist.length} done</span>
+                                </div>
+                                <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                                    {checklist.map((c, i) => {
+                                        const icon = c.count >= TARGET_PER_CHAPTER ? "✅" : c.count > 0 ? "🟡" : "⬜";
+                                        return (
+                                            <div key={i} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-white/5 last:border-0">
+                                                <span className="flex items-center gap-1.5 min-w-0">
+                                                    <span>{icon}</span>
+                                                    <span className="truncate text-white/70">{c.chapter}</span>
+                                                </span>
+                                                <span className="font-mono text-white/40 shrink-0">{c.count}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
