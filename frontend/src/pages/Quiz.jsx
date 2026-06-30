@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, SUBJECT_COLORS, SUBJECT_LABEL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Loader2, X, Clock } from "lucide-react";
+import { Loader2, X, Clock, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Quiz() {
@@ -21,6 +21,7 @@ export default function Quiz() {
     const [answers, setAnswers] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [timeLeft, setTimeLeft] = useState(null); // seconds, mock_test only
+    const [imageZoomed, setImageZoomed] = useState(false);
 
     const answersRef = useRef([]);
     const submittedRef = useRef(false);
@@ -93,6 +94,7 @@ export default function Quiz() {
         setAnswers(newAnswers);
         answersRef.current = newAnswers;
         setSelected(null);
+        setImageZoomed(false);
 
         if (idx + 1 < questions.length) {
             setIdx(idx + 1);
@@ -153,12 +155,22 @@ export default function Quiz() {
                 <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-2">Chapter · {q.chapter}</p>
 
                 {q.image_url && (
-                    <img
-                        src={q.image_url}
-                        alt="Question diagram"
-                        className="w-full max-h-72 object-contain rounded-xl border border-white/10 bg-white mb-5"
-                        data-testid="quiz-question-image"
-                    />
+                    <button
+                        onClick={() => setImageZoomed(true)}
+                        className="relative w-full mb-5 group cursor-zoom-in"
+                        data-testid="quiz-question-image-btn"
+                    >
+                        <img
+                            src={q.image_url}
+                            alt="Question diagram"
+                            className="w-full max-h-72 object-contain rounded-xl border border-white/10 bg-white"
+                            data-testid="quiz-question-image"
+                        />
+                        <span className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/70 text-white text-xs font-bold opacity-90 group-hover:opacity-100 group-hover:bg-black/85 transition">
+                            <ZoomIn className="w-3.5 h-3.5" />
+                            Tap to zoom
+                        </span>
+                    </button>
                 )}
 
                 {q.question && (
@@ -193,6 +205,31 @@ export default function Quiz() {
                     </button>
                 </div>
             </div>
+
+            {/* ── Fullscreen image zoom lightbox ── */}
+            {imageZoomed && q.image_url && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 sm:p-8"
+                    onClick={() => setImageZoomed(false)}
+                    data-testid="quiz-image-lightbox"
+                >
+                    <button
+                        onClick={() => setImageZoomed(false)}
+                        className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+                    >
+                        <X className="w-5 h-5 text-white" />
+                    </button>
+                    <img
+                        src={q.image_url}
+                        alt="Question diagram zoomed"
+                        className="max-w-full max-h-full object-contain rounded-lg bg-white cursor-zoom-out"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs font-mono">
+                        Tap anywhere to close
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

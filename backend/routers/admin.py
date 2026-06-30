@@ -351,7 +351,9 @@ async def admin_upload_note_file(file: UploadFile = File(...), admin: User = Dep
             resource_type="image" if not is_pdf else "image",  # Cloudinary treats PDF as "image" resource for delivery
             public_id=f"note_{uuid.uuid4().hex[:12]}",
             **({} if is_pdf else {
-                "transformation": [{"quality": "auto"}],
+                # quality:90 keeps diagrams/text crisp (vs "auto" which can over-compress);
+                # cap longest side at 1600px so files stay reasonable without losing readability
+                "transformation": [{"width": 1600, "height": 1600, "crop": "limit", "quality": 90}],
             }),
         )
         url = result.get("secure_url")
