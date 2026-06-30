@@ -52,4 +52,5 @@ async def get_questions(
     docs = docs[:limit]
     return [QuestionOut(id=d["question_id"], subject=d["subject"], chapter=d["chapter"],
                         question=d["question"], options=d["options"],
-                        is_pyq=d.get("is_pyq", False), year=d.get("year")) for d in docs]
+                        is_pyq=d.get("is_pyq", False), year=d.get("year"),
+                        image_url=d.get("image_url", "")) for d in docs]

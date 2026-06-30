@@ -1,56 +1,145 @@
-import random
-from typing import Optional
-from fastapi import APIRouter
+"""Question seeding, AI generation and AI cost-cap helpers."""
+import json
+import logging
+import re
+import uuid
+import httpx
+from datetime import datetime, timezone, date
+from typing import List
 
 from database import db
-from models import QuestionOut
-from services.questions import ai_generate_questions
-
-router = APIRouter()
+from config import AI_DAILY_CAP
+from data.seed_questions import SEED_QUESTIONS
 
 
-@router.get("/chapters")
-async def list_chapters(subject: Optional[str] = None):
-    """Return chapters (with question counts) for a subject for chapter-wise practice."""
-    match = {}
-    if subject and subject != "all":
-        match["subject"] = subject
-    pipeline = [
-        {"$match": match},
-        {"$group": {"_id": "$chapter", "count": {"$sum": 1}, "subject": {"$first": "$subject"}}},
-        {"$sort": {"_id": 1}},
-    ]
-    rows = await db.questions.aggregate(pipeline).to_list(500)
-    return [{"chapter": r["_id"], "count": r["count"], "subject": r["subject"]} for r in rows]
+async def ensure_seed_questions():
+    existing_texts = set(await db.questions.distinct("question"))
+    docs = []
+    for q in SEED_QUESTIONS:
+        if q["question"] in existing_texts:
+            continue
+        docs.append({
+            "question_id": f"q_{uuid.uuid4().hex[:12]}",
+            "subject": q["subject"],
+            "chapter": q["chapter"],
+            "question": q["question"],
+            "options": q["options"],
+            "correct": q["correct"],
+            "explanation": q["explanation"],
+            "is_pyq": q.get("is_pyq", False),
+            "year": q.get("year"),
+            "source": "seed",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    if docs:
+        await db.questions.insert_many(docs)
+        logging.info(f"Seeded {len(docs)} new questions")
 
 
-@router.get("/questions")
-async def get_questions(
-    subject: Optional[str] = None,
-    chapter: Optional[str] = None,
-    mode: str = "pyq",
-    limit: int = 10,
-):
-    """Fetch questions for a quiz session."""
-    q: dict = {}
-    if subject and subject != "all":
-        q["subject"] = subject
-    if chapter:
-        q["chapter"] = chapter
-    if mode == "pyq":
-        q["is_pyq"] = True
+async def ai_generated_today() -> int:
+    today = date.today().isoformat()
+    return await db.questions.count_documents({
+        "source": "ai",
+        "created_at": {"$gte": today},
+    })
 
-    docs = await db.questions.find(q, {"_id": 0, "correct": 0, "explanation": 0}).to_list(500)
 
-    # Top up via AI if too few (not for PYQ mode and not chapter-restricted)
-    if len(docs) < limit and subject and subject != "all" and mode not in ("pyq", "chapter"):
-        gen = await ai_generate_questions(subject, count=max(5, limit - len(docs)))
-        for d in gen:
-            docs.append({k: v for k, v in d.items() if k not in ("correct", "explanation", "_id")})
+async def ai_daily_remaining() -> int:
+    return max(0, AI_DAILY_CAP - await ai_generated_today())
 
-    random.shuffle(docs)
-    docs = docs[:limit]
-    return [QuestionOut(id=d["question_id"], subject=d["subject"], chapter=d["chapter"],
-                        question=d["question"], options=d["options"],
-                        is_pyq=d.get("is_pyq", False), year=d.get("year"),
-                        image_url=d.get("image_url", "")) for d in docs]
+
+async def ai_generate_questions(subject: str, count: int = 5) -> List[dict]:
+    """Generate NEET MCQs using Google Gemini API (Free)."""
+    import os
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        logging.warning("GEMINI_API_KEY not set")
+        return []
+
+    remaining = await ai_daily_remaining()
+    if remaining <= 0:
+        return []
+    count = min(count, remaining)
+
+    prompt = f"""Generate {count} high-quality NEET exam MCQs for {subject}.
+
+Return ONLY a valid JSON array, no markdown, no explanation, no extra text. Format:
+[
+  {{
+    "chapter": "Chapter Name",
+    "question": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct": 0,
+    "explanation": "Brief explanation why this is correct"
+  }}
+]
+
+Rules:
+- correct is 0-based index (0=A, 1=B, 2=C, 3=D)
+- Exactly 4 options required
+- NEET standard difficulty
+- Based on NCERT syllabus for {subject}
+- Return ONLY the JSON array, nothing else"""
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={api_key}"
+        
+        async with httpx.AsyncClient(timeout=60) as http:
+            resp = await http.post(
+                url,
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.7,
+                        "maxOutputTokens": 4000,
+                    }
+                }
+            )
+
+        if resp.status_code != 200:
+            logging.warning(f"Gemini API error: {resp.status_code} {resp.text}")
+            return []
+
+        data = resp.json()
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        
+        # Remove markdown code blocks if present
+        text = re.sub(r'```json\s*', '', text)
+        text = re.sub(r'```\s*', '', text)
+        text = text.strip()
+
+        # Extract JSON array
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if not match:
+            logging.warning(f"No JSON array in Gemini response: {text[:200]}")
+            return []
+
+        items = json.loads(match.group())
+        docs = []
+        for item in items:
+            if not isinstance(item.get("options"), list) or len(item["options"]) != 4:
+                continue
+            correct = int(item.get("correct", 0))
+            if not (0 <= correct <= 3):
+                continue
+            docs.append({
+                "question_id": f"q_{uuid.uuid4().hex[:12]}",
+                "subject": subject,
+                "chapter": item.get("chapter", "General"),
+                "question": item["question"],
+                "options": item["options"],
+                "correct": correct,
+                "explanation": item.get("explanation", ""),
+                "is_pyq": False,
+                "year": None,
+                "source": "ai",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        if docs:
+            await db.questions.insert_many(docs)
+            logging.info(f"Gemini generated {len(docs)} questions for {subject}")
+        return docs
+
+    except Exception as e:
+        logging.warning(f"Gemini generation failed: {e}")
+        return []
