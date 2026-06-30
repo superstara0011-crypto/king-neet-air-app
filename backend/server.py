@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 
 from database import client
 from services.questions import ensure_seed_questions
-from routers import auth, questions, quiz, leaderboard, profile, admin, live_quiz, dashboard
+from routers import auth, questions, quiz, leaderboard, profile, admin, live_quiz, dashboard, tracker
 
 # ── Rate limiting — protects against spam/brute-force on all endpoints ──────
 # Default: 100 requests/minute per IP across the whole API. Tighter limits
@@ -30,6 +30,7 @@ api_router.include_router(profile.router)
 api_router.include_router(admin.router)
 api_router.include_router(live_quiz.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(tracker.router)
 
 
 @api_router.get("/")
