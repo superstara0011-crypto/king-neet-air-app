@@ -161,9 +161,11 @@ export default function Quiz() {
                     />
                 )}
 
-                <h2 className="font-heading text-xl sm:text-2xl font-bold leading-snug mb-6" data-testid="quiz-question-text">
-                    {q.question}
-                </h2>
+                {q.question && (
+                    <h2 className="font-heading text-xl sm:text-2xl font-bold leading-snug mb-6" data-testid="quiz-question-text">
+                        {q.question}
+                    </h2>
+                )}
 
                 <div className="space-y-3">
                     {q.options.map((opt, i) => (

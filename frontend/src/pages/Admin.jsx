@@ -1166,8 +1166,9 @@ function QuestionModal({ initial, onClose, onSaved }) {
     });
 
     const save = async () => {
-        if (!form.question.trim() || form.options.some((o) => !o.trim()) || !form.chapter.trim()) {
-            toast.error("Fill question, chapter and all 4 options");
+        const hasQuestionContent = form.question.trim() || form.image_url;
+        if (!hasQuestionContent || form.options.some((o) => !o.trim()) || !form.chapter.trim()) {
+            toast.error("Add question text or an image, plus chapter and all 4 options");
             return;
         }
         if (uploadingImg) {
@@ -1235,7 +1236,7 @@ function QuestionModal({ initial, onClose, onSaved }) {
                         </select>
                     </Field>
                 </div>
-                <Field label="Question Text">
+                <Field label="Question Text (optional if using an image, e.g. Match the Following tables)">
                     <textarea value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} rows={2} className={inputCls} />
                 </Field>
                 <Field label="Diagram/Image (optional)">
