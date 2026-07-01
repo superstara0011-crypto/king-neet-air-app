@@ -50,6 +50,8 @@ export default function NavBar() {
                     <Link to="/play" className={linkCls("/play")}>Play</Link>
                     <Link to="/history" className={linkCls("/history")}>History</Link>
                     <Link to="/leaderboard" className={linkCls("/leaderboard")}>Leaderboard</Link>
+                    <Link to="/tracker" className={linkCls("/tracker")}>Tracker</Link>
+                    <Link to="/mistakes" className={linkCls("/mistakes")}>Mistakes</Link>
                     {user?.username && (
                         <Link to={`/u/${user.username}`} className={linkCls("/u/")}>Profile</Link>
                     )}
