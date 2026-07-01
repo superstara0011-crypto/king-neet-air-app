@@ -16,6 +16,9 @@ import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import History from "@/pages/History";
 import NavBar from "@/components/NavBar";
+import Tracker from "@/pages/Tracker";
+import Mistakes from "@/pages/Mistakes";
+import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
 
 function Protected({ children }) {
     const { user, loading } = useAuth();
@@ -54,6 +57,10 @@ function AppRouter() {
             <Route path="/history" element={<Protected><History /></Protected>} />
             <Route path="/u/:username" element={<Protected><Profile /></Protected>} />
             <Route path="/admin" element={<Protected><Admin /></Protected>} />
+            <Route path="/tracker" element={<Protected><Tracker /></Protected>} />
+            <Route path="/mistakes" element={<Protected><Mistakes /></Protected>} />
+            <Route path="/live-quiz" element={<Protected><LiveQuizList /></Protected>} />
+            <Route path="/live-quiz/:id" element={<Protected><LiveQuizAttempt /></Protected>} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
