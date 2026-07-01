@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
     Loader2, CheckCircle2, Circle, Calendar, Settings, Plus, Trash2,
-    Crown, Flame, TrendingUp, X, GripVertical,
+    Flame, TrendingUp, X, GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,12 +20,11 @@ export default function Tracker() {
     const [today, setToday] = useState(null);
     const [week, setWeek] = useState(null);
     const [view, setView] = useState("today"); // today | week | settings
-    const [forbidden, setForbidden] = useState(false);
 
     const loadToday = () => {
         api.get("/tracker/today")
             .then(r => setToday(r.data))
-            .catch(e => { if (e.response?.status === 403) setForbidden(true); });
+            .catch(() => { toast.error("Couldn't load tracker — try again"); });
     };
 
     const loadWeek = () => {
@@ -54,16 +53,6 @@ export default function Tracker() {
         }
     };
 
-    if (forbidden) {
-        return (
-            <div className="max-w-md mx-auto px-4 py-24 text-center">
-                <Crown className="w-12 h-12 text-[#FFD700] mx-auto mb-4" />
-                <h2 className="font-heading text-2xl font-black mb-2">Premium Feature</h2>
-                <p className="text-white/50">The Daily Study Tracker is available for Premium members. Climb the leaderboard to unlock it!</p>
-            </div>
-        );
-    }
-
     if (!today) return (
         <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#39FF14] animate-spin" /></div>
     );
@@ -74,8 +63,8 @@ export default function Tracker() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-center justify-between mb-6 fade-up">
                 <div>
-                    <p className="font-mono uppercase tracking-widest text-xs text-[#39FF14] mb-2 flex items-center gap-1.5">
-                        <Crown className="w-3.5 h-3.5 text-[#FFD700]" />Premium
+                    <p className="font-mono uppercase tracking-widest text-xs text-[#39FF14] mb-2">
+                        Study Tracker
                     </p>
                     <h1 className="font-heading text-3xl sm:text-4xl font-black">Daily Tracker</h1>
                 </div>
