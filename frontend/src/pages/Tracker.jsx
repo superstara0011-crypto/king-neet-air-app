@@ -2,24 +2,59 @@ import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
-    Loader2, CheckCircle2, Circle, Calendar, Settings, Plus, Trash2,
-    Flame, TrendingUp, X, GripVertical,
+    Loader2, CheckCircle2, Circle, XCircle, Calendar, Clock, Plus, Trash2,
+    Flame, GripVertical, BookOpen, Target, ScrollText, ClipboardCheck, MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 
-const SCORE_COLORS = {
-    "🔥 Excellent": "#39FF14",
-    "✅ Good": "#00F0FF",
-    "⚠️ Average": "#FFD700",
-    "❌ Improve": "#FF3B30",
-    "—": "#666",
+const CATEGORY_ICON = {
+    study: BookOpen,
+    practice: Target,
+    revision: ScrollText,
+    test: ClipboardCheck,
+    other: MoreHorizontal,
 };
+
+const CATEGORY_LABEL = {
+    study: "Study",
+    practice: "Practice",
+    revision: "Revision",
+    test: "Test",
+    other: "Other",
+};
+
+const CATEGORY_LIST = ["study", "practice", "revision", "test", "other"];
+
+// ─── Circular progress ring ─────────────────────────────────────────────
+function ProgressRing({ percent, size = 56, stroke = 5, color = "#39FF14" }) {
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const clamped = Math.max(0, Math.min(100, percent));
+    const offset = circumference - (clamped / 100) * circumference;
+
+    return (
+        <svg width={size} height={size}>
+            <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} fill="none" />
+                <circle
+                    cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth={stroke} fill="none"
+                    strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+                    style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                />
+            </g>
+            <text x="50%" y="50%" dy=".35em" textAnchor="middle"
+                style={{ fontSize: size * 0.26, fontWeight: 900, fill: color, fontFamily: "monospace" }}>
+                {Math.round(clamped)}%
+            </text>
+        </svg>
+    );
+}
 
 export default function Tracker() {
     const { user } = useAuth();
     const [today, setToday] = useState(null);
     const [week, setWeek] = useState(null);
-    const [view, setView] = useState("today"); // today | week | settings
+    const [view, setView] = useState("today"); // today | week | custom
 
     const loadToday = () => {
         api.get("/tracker/today")
@@ -37,7 +72,6 @@ export default function Tracker() {
     }, []);
 
     const toggleTask = async (taskId) => {
-        // Optimistic update
         setToday(t => {
             const tasks = t.tasks.map(task => task.id === taskId ? { ...task, done: !task.done } : task);
             const score = tasks.filter(t => t.done).length;
@@ -46,10 +80,24 @@ export default function Tracker() {
         try {
             const r = await api.post("/tracker/today/toggle", { task_id: taskId });
             setToday(t => ({ ...t, score: r.data.score, label: r.data.label }));
-            loadWeek(); // keep weekly view in sync
+            loadWeek();
         } catch {
             toast.error("Couldn't save — try again");
-            loadToday(); // revert on failure
+            loadToday();
+        }
+    };
+
+    const addQuickTask = async (label, category) => {
+        try {
+            const cur = await api.get("/tracker/tasks");
+            const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 30) + "_" + Date.now().toString(36).slice(-4);
+            const tasks = [...cur.data.tasks, { id, label, category }];
+            await api.put("/tracker/tasks", { tasks });
+            toast.success("Task added!");
+            loadToday();
+            loadWeek();
+        } catch {
+            toast.error("Couldn't add task");
         }
     };
 
@@ -57,80 +105,140 @@ export default function Tracker() {
         <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#39FF14] animate-spin" /></div>
     );
 
-    const scoreColor = SCORE_COLORS[today.label] || "#39FF14";
-
     return (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-center justify-between mb-6 fade-up">
                 <div>
-                    <p className="font-mono uppercase tracking-widest text-xs text-[#39FF14] mb-2">
-                        Study Tracker
-                    </p>
-                    <h1 className="font-heading text-3xl sm:text-4xl font-black">Daily Tracker</h1>
+                    <p className="font-mono uppercase tracking-widest text-xs text-[#39FF14] mb-2">Study Tracker</p>
+                    <h1 className="font-heading text-3xl sm:text-4xl font-black">Task Tracker</h1>
                 </div>
                 <div className="flex gap-2">
                     {[
-                        { id: "today", icon: <CheckCircle2 className="w-4 h-4" />, label: "Today" },
-                        { id: "week", icon: <Calendar className="w-4 h-4" />, label: "Week" },
-                        { id: "settings", icon: <Settings className="w-4 h-4" />, label: "Edit" },
+                        { id: "today", label: "Daily" },
+                        { id: "week", label: "Weekly" },
+                        { id: "custom", label: "Custom" },
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setView(tab.id)}
-                            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
+                            className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
                                 view === tab.id ? "bg-[#39FF14] text-black" : "border border-[#39FF14]/30 text-white/60 hover:text-white"
                             }`}>
-                            {tab.icon}<span className="hidden sm:inline">{tab.label}</span>
+                            {tab.label}
                         </button>
                     ))}
                 </div>
             </div>
 
             {view === "today" && (
-                <TodayView today={today} onToggle={toggleTask} scoreColor={scoreColor} />
+                <TodayView today={today} onToggle={toggleTask} onAdd={addQuickTask} />
             )}
             {view === "week" && (
                 <WeekView week={week} />
             )}
-            {view === "settings" && (
-                <SettingsView onSaved={() => { loadToday(); loadWeek(); setView("today"); }} />
+            {view === "custom" && (
+                <CustomView onSaved={() => { loadToday(); loadWeek(); }} />
             )}
         </div>
     );
 }
 
 // ─── TODAY VIEW ──────────────────────────────────────────────────────────
-function TodayView({ today, onToggle, scoreColor }) {
+function TodayView({ today, onToggle, onAdd }) {
+    const pct = today.total ? (today.score / today.total) * 100 : 0;
+
     return (
         <div className="fade-up">
             <div className="glass-card p-5 mb-6 flex items-center justify-between">
                 <div>
-                    <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-1">Today's Score</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="font-mono text-3xl font-black" style={{ color: scoreColor }}>{today.score}</span>
-                        <span className="font-mono text-white/40">/ {today.total}</span>
-                    </div>
+                    <p className="font-bold text-lg">Today's Tasks</p>
+                    <p className="text-sm text-white/40">{today.score}/{today.total} completed</p>
                 </div>
-                <div className="text-right">
-                    <span className="font-bold text-lg" style={{ color: scoreColor }}>{today.label}</span>
-                    <div className="w-32 bg-white/10 rounded-full h-2 mt-2 overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${(today.score / today.total) * 100}%`, background: scoreColor }} />
-                    </div>
-                </div>
+                <ProgressRing percent={pct} />
             </div>
 
             <div className="space-y-2">
-                {today.tasks.map(task => (
-                    <button key={task.id} onClick={() => onToggle(task.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition ${
-                            task.done ? "border-[#39FF14]/40 bg-[#39FF14]/10" : "border-white/10 hover:border-white/20"
-                        }`}>
-                        {task.done
-                            ? <CheckCircle2 className="w-5 h-5 text-[#39FF14] shrink-0" />
-                            : <Circle className="w-5 h-5 text-white/30 shrink-0" />
-                        }
-                        <span className={`text-sm ${task.done ? "text-white/50 line-through" : "text-white/90"}`}>{task.label}</span>
-                    </button>
-                ))}
+                {today.tasks.map(task => {
+                    const Icon = CATEGORY_ICON[task.category] || BookOpen;
+                    return (
+                        <button key={task.id} onClick={() => onToggle(task.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition ${
+                                task.done ? "border-[#39FF14]/40 bg-[#39FF14]/10" : "border-white/10 hover:border-white/20"
+                            }`}>
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? "bg-[#39FF14]/20" : "bg-white/5"}`}>
+                                <Icon className={`w-4 h-4 ${task.done ? "text-[#39FF14]" : "text-white/50"}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className={`text-sm font-bold truncate ${task.done ? "text-white/50 line-through" : "text-white/90"}`}>{task.label}</div>
+                                <div className="text-xs text-white/35 font-mono uppercase tracking-wider">{CATEGORY_LABEL[task.category] || "Study"}</div>
+                            </div>
+                            {task.done
+                                ? <CheckCircle2 className="w-5 h-5 text-[#39FF14] shrink-0" />
+                                : <Circle className="w-5 h-5 text-white/25 shrink-0" />
+                            }
+                        </button>
+                    );
+                })}
             </div>
+
+            <QuickAddTask onAdd={onAdd} />
+
+            <div className="glass-card p-4 mt-4 flex items-start gap-3">
+                <span className="text-lg">💡</span>
+                <p className="text-sm text-white/50">Break big goals into daily tasks and stay consistent!</p>
+            </div>
+        </div>
+    );
+}
+
+function QuickAddTask({ onAdd }) {
+    const [label, setLabel] = useState("");
+    const [category, setCategory] = useState("study");
+    const [saving, setSaving] = useState(false);
+
+    const submit = async () => {
+        if (!label.trim()) return;
+        setSaving(true);
+        await onAdd(label.trim(), category);
+        setLabel("");
+        setCategory("study");
+        setSaving(false);
+    };
+
+    return (
+        <div className="glass-card p-4 mt-6">
+            <p className="text-xs font-mono uppercase tracking-widest text-white/40 mb-3">Add a New Task</p>
+            <input value={label} onChange={(e) => setLabel(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+                placeholder="e.g. Solve 30 Questions"
+                className="w-full bg-black/30 border border-[#39FF14]/25 rounded-lg px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-[#39FF14]" />
+
+            <div className="flex flex-wrap gap-2 mb-3">
+                {CATEGORY_LIST.map(c => {
+                    const Icon = CATEGORY_ICON[c];
+                    const active = category === c;
+                    return (
+                        <button key={c} type="button" onClick={() => setCategory(c)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                                active ? "bg-[#39FF14]/15 text-[#39FF14] border-[#39FF14]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
+                            }`}>
+                            <Icon className="w-3.5 h-3.5" />{CATEGORY_LABEL[c]}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="flex gap-2 mb-3">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#39FF14]/15 text-[#39FF14] border border-[#39FF14]/30">
+                    <Calendar className="w-3.5 h-3.5" />Today
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/40 border border-white/10">
+                    <Clock className="w-3.5 h-3.5" />Any time
+                </span>
+            </div>
+
+            <button onClick={submit} disabled={saving || !label.trim()}
+                className="w-full py-2.5 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#39FF14] hover:opacity-90 transition disabled:opacity-40">
+                {saving ? "Adding..." : "Add Task"}
+            </button>
         </div>
     );
 }
@@ -139,36 +247,52 @@ function TodayView({ today, onToggle, scoreColor }) {
 function WeekView({ week }) {
     if (!week) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#39FF14] animate-spin" /></div>;
 
+    const completedDays = week.days.filter(d => d.total > 0 && d.score === d.total).length;
+    const pct = week.days.length ? (completedDays / week.days.length) * 100 : 0;
+
     return (
-        <div className="fade-up space-y-3">
-            {week.days.map(d => {
-                const color = SCORE_COLORS[d.label] || "#39FF14";
-                return (
-                    <div key={d.date} className={`glass-card p-4 flex items-center justify-between ${d.is_today ? "border-[#39FF14]/40" : ""}`}>
-                        <div className="flex items-center gap-3">
-                            {d.is_sunday && <Flame className="w-4 h-4 text-[#FFD700]" />}
-                            <div>
-                                <div className="font-bold text-sm">{d.weekday} {d.is_today && <span className="text-[#39FF14] text-xs ml-1">(Today)</span>}</div>
-                                <div className="font-mono text-xs text-white/40">{d.date}</div>
+        <div className="fade-up">
+            <div className="glass-card p-5 mb-6 flex items-center justify-between">
+                <div>
+                    <p className="font-bold text-lg">This Week</p>
+                    <p className="text-sm text-white/40">{completedDays}/{week.days.length} completed</p>
+                </div>
+                <ProgressRing percent={pct} />
+            </div>
+
+            <div className="space-y-2">
+                {week.days.map(d => {
+                    const complete = d.total > 0 && d.score === d.total;
+                    const StatusIcon = complete ? CheckCircle2 : (d.is_past ? XCircle : Circle);
+                    const statusColor = complete ? "#39FF14" : (d.is_past ? "#FF3B30" : "rgba(255,255,255,0.3)");
+
+                    return (
+                        <div key={d.date} className={`glass-card p-4 flex items-center justify-between ${d.is_today ? "border-[#39FF14]/40" : ""}`}>
+                            <div className="flex items-center gap-3">
+                                {d.is_sunday && <Flame className="w-4 h-4 text-[#FFD700]" />}
+                                <div>
+                                    <div className="font-bold text-sm">
+                                        {d.weekday} {d.is_today && <span className="text-[#39FF14] text-xs ml-1">(Today)</span>}
+                                    </div>
+                                    <div className="text-xs text-white/40 mt-0.5">
+                                        {d.total ? `${d.score}/${d.total} tasks done` : "No tasks set"}
+                                    </div>
+                                </div>
                             </div>
+                            <StatusIcon className="w-5 h-5 shrink-0" style={{ color: statusColor }} />
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="w-24 bg-white/10 rounded-full h-2 overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${(d.score / d.total) * 100}%`, background: color }} />
-                            </div>
-                            <span className="font-mono text-sm font-bold w-12 text-right" style={{ color }}>{d.score}/{d.total}</span>
-                        </div>
-                    </div>
-                );
-            })}
+                    );
+                })}
+            </div>
         </div>
     );
 }
 
-// ─── SETTINGS VIEW (task editor) ────────────────────────────────────────
-function SettingsView({ onSaved }) {
+// ─── CUSTOM VIEW (task editor — manage your own daily checklist) ────────
+function CustomView({ onSaved }) {
     const [tasks, setTasks] = useState(null);
     const [newLabel, setNewLabel] = useState("");
+    const [newCategory, setNewCategory] = useState("study");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -178,8 +302,9 @@ function SettingsView({ onSaved }) {
     const addTask = () => {
         if (!newLabel.trim()) return;
         const id = newLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 30) + "_" + Date.now().toString(36).slice(-4);
-        setTasks(t => [...t, { id, label: newLabel.trim() }]);
+        setTasks(t => [...t, { id, label: newLabel.trim(), category: newCategory }]);
         setNewLabel("");
+        setNewCategory("study");
     };
 
     const removeTask = (id) => setTasks(t => t.filter(x => x.id !== id));
@@ -204,19 +329,23 @@ function SettingsView({ onSaved }) {
             <p className="text-white/40 text-sm mb-4">Customize your daily checklist — add, remove, or rename tasks to match your routine.</p>
 
             <div className="space-y-2 mb-4">
-                {tasks.map(task => (
-                    <div key={task.id} className="flex items-center gap-2 glass-card p-3">
-                        <GripVertical className="w-4 h-4 text-white/20 shrink-0" />
-                        <input value={task.label} onChange={(e) => updateLabel(task.id, e.target.value)}
-                            className="flex-1 bg-transparent border-none outline-none text-sm text-white/90" />
-                        <button onClick={() => removeTask(task.id)} className="text-white/30 hover:text-[#FF3B30] transition shrink-0">
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
-                ))}
+                {tasks.map(task => {
+                    const Icon = CATEGORY_ICON[task.category] || BookOpen;
+                    return (
+                        <div key={task.id} className="flex items-center gap-2 glass-card p-3">
+                            <GripVertical className="w-4 h-4 text-white/20 shrink-0" />
+                            <Icon className="w-4 h-4 text-white/40 shrink-0" />
+                            <input value={task.label} onChange={(e) => updateLabel(task.id, e.target.value)}
+                                className="flex-1 bg-transparent border-none outline-none text-sm text-white/90" />
+                            <button onClick={() => removeTask(task.id)} className="text-white/30 hover:text-[#FF3B30] transition shrink-0">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                    );
+                })}
             </div>
 
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2 mb-3">
                 <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addTask()}
                     placeholder="Add a new task..."
@@ -224,6 +353,21 @@ function SettingsView({ onSaved }) {
                 <button onClick={addTask} className="px-4 bg-[#39FF14]/15 text-[#39FF14] border border-[#39FF14]/40 rounded-lg hover:bg-[#39FF14]/25 transition">
                     <Plus className="w-4 h-4" />
                 </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-6">
+                {CATEGORY_LIST.map(c => {
+                    const Icon = CATEGORY_ICON[c];
+                    const active = newCategory === c;
+                    return (
+                        <button key={c} type="button" onClick={() => setNewCategory(c)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                                active ? "bg-[#39FF14]/15 text-[#39FF14] border-[#39FF14]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
+                            }`}>
+                            <Icon className="w-3.5 h-3.5" />{CATEGORY_LABEL[c]}
+                        </button>
+                    );
+                })}
             </div>
 
             <button onClick={save} disabled={saving}

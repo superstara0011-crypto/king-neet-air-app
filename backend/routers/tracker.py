@@ -14,12 +14,14 @@ from database import db
 router = APIRouter(prefix="/tracker", tags=["tracker"])
 
 DEFAULT_TASKS = [
-    {"id": "study_2hr", "label": "Studied at least 2 hours"},
-    {"id": "revise", "label": "Revised previous day's topics"},
-    {"id": "pyq", "label": "Solved PYQs / practice questions"},
-    {"id": "mistake_notebook", "label": "Updated Mistake Notebook"},
-    {"id": "sleep_7hr", "label": "Slept 7+ hours"},
+    {"id": "study_2hr", "label": "Studied at least 2 hours", "category": "study"},
+    {"id": "revise", "label": "Revised previous day's topics", "category": "revision"},
+    {"id": "pyq", "label": "Solved PYQs / practice questions", "category": "practice"},
+    {"id": "mistake_notebook", "label": "Updated Mistake Notebook", "category": "revision"},
+    {"id": "sleep_7hr", "label": "Slept 7+ hours", "category": "other"},
 ]
+
+VALID_CATEGORIES = {"study", "practice", "revision", "test", "other"}
 
 def label_for_score(score: int, total: int) -> str:
     if total == 0:
@@ -41,6 +43,7 @@ def today_str():
 class TaskItem(BaseModel):
     id: str
     label: str
+    category: Optional[str] = "study"
 
 class TasksUpdate(BaseModel):
     tasks: List[TaskItem]
@@ -53,7 +56,11 @@ class ToggleRequest(BaseModel):
 async def get_user_tasks(db, user_id: str):
     doc = await db.tracker_tasks.find_one({"user_id": user_id})
     if doc and doc.get("tasks"):
-        return doc["tasks"]
+        tasks = doc["tasks"]
+        for t in tasks:
+            if t.get("category") not in VALID_CATEGORIES:
+                t["category"] = "study"
+        return tasks
     return DEFAULT_TASKS
 
 
@@ -149,7 +156,9 @@ async def get_week(user=Depends(get_current_user)):
         days.append({
             "date": date_str,
             "weekday": d.strftime("%a"),
-            "is_today": date_str == today_str(),
+            "is_today": d == today,
+            "is_past": d < today,
+            "is_future": d > today,
             "is_sunday": d.weekday() == 6,
             "score": score,
             "total": total,
