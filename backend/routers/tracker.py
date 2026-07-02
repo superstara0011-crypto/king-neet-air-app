@@ -11,7 +11,7 @@ from typing import List, Optional
 from deps import get_current_user
 from database import db
 
-router = APIRouter()
+router = APIRouter(prefix="/tracker", tags=["tracker"])
 
 DEFAULT_TASKS = [
     {"id": "study_2hr", "label": "Studied at least 2 hours"},
