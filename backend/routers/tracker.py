@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 # Adjust this import to match your actual deps.py
-from deps import get_current_user, get_db
+from deps import get_current_user
+from database import db
 
 router = APIRouter()
 
@@ -59,13 +60,13 @@ async def get_user_tasks(db, user_id: str):
 # ─── Routes ───────────────────────────────────────────────
 
 @router.get("/tasks")
-async def list_tasks(user=Depends(get_current_user), db=Depends(get_db)):
+async def list_tasks(user=Depends(get_current_user)):
     tasks = await get_user_tasks(db, str(user["_id"]))
     return {"tasks": tasks}
 
 
 @router.put("/tasks")
-async def update_tasks(body: TasksUpdate, user=Depends(get_current_user), db=Depends(get_db)):
+async def update_tasks(body: TasksUpdate, user=Depends(get_current_user)):
     if len(body.tasks) == 0:
         raise HTTPException(status_code=400, detail="Add at least one task")
 
@@ -79,7 +80,7 @@ async def update_tasks(body: TasksUpdate, user=Depends(get_current_user), db=Dep
 
 
 @router.get("/today")
-async def get_today(user=Depends(get_current_user), db=Depends(get_db)):
+async def get_today(user=Depends(get_current_user)):
     user_id = str(user["_id"])
     date = today_str()
     tasks = await get_user_tasks(db, user_id)
@@ -101,7 +102,7 @@ async def get_today(user=Depends(get_current_user), db=Depends(get_db)):
 
 
 @router.post("/today/toggle")
-async def toggle_task(body: ToggleRequest, user=Depends(get_current_user), db=Depends(get_db)):
+async def toggle_task(body: ToggleRequest, user=Depends(get_current_user)):
     user_id = str(user["_id"])
     date = today_str()
     tasks = await get_user_tasks(db, user_id)
@@ -130,7 +131,7 @@ async def toggle_task(body: ToggleRequest, user=Depends(get_current_user), db=De
 
 
 @router.get("/week")
-async def get_week(user=Depends(get_current_user), db=Depends(get_db)):
+async def get_week(user=Depends(get_current_user)):
     user_id = str(user["_id"])
     tasks = await get_user_tasks(db, user_id)
     total = len(tasks)
