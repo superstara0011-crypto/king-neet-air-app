@@ -1,236 +1,158 @@
 """
-backend/routers/tracker.py
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-King NEET AIR — Daily Study Tracker (Premium feature)
-
-A customizable daily checklist (wake-up time, DPPs, NCERT reading,
-backlog, etc.) with auto-scoring and a weekly view. Each user can
-edit their own task list and target score.
-
-Endpoints:
-  GET    /tracker/tasks              → get user's task list (creates defaults on first use)
-  PUT    /tracker/tasks              → replace the task list (add/remove/edit/reorder)
-  GET    /tracker/today              → get today's checklist + completion state
-  POST   /tracker/today/toggle       → toggle one task done/undone for today
-  GET    /tracker/week               → last 7 days' scores (for the weekly tracker view)
-  GET    /tracker/history?days=30    → longer history for review
-
-Premium gate: every endpoint requires the user to be premium (top N on
-leaderboard) OR an admin (so admins can always test it).
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Daily Study Tracker router — King NEET AIR
+No premium restriction: any logged-in user can use this.
 """
-
-import uuid
-from typing import List, Optional
-from datetime import datetime, timezone, timedelta, date
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 
-from database import db
-from deps import require_user
-from services.premium import get_top_user_ids
+# Adjust this import to match your actual deps.py
+from deps import get_current_user, get_db
 
-router = APIRouter(prefix="/tracker")
+router = APIRouter()
 
-# ── Default task list — seeded the first time a user opens the tracker ──────
 DEFAULT_TASKS = [
-    {"id": "wake_up", "label": "Wake up before 5:45 AM"},
-    {"id": "bio_revision", "label": "Morning Biology NCERT Revision (30 min)"},
-    {"id": "class_1", "label": "Class 1 Attended"},
-    {"id": "class_2", "label": "Class 2 Attended"},
-    {"id": "class_3", "label": "Class 3 Attended"},
-    {"id": "notes", "label": "Class Notes Completed"},
-    {"id": "physics_dpp", "label": "Physics DPP Completed"},
-    {"id": "chem_dpp", "label": "Chemistry DPP Completed"},
-    {"id": "bio_dpp", "label": "Biology DPP Completed"},
-    {"id": "physics_q", "label": "Physics Questions (50+)"},
-    {"id": "chem_q", "label": "Chemistry Questions (50+)"},
-    {"id": "bio_q", "label": "Biology Questions (100+)"},
-    {"id": "ncert_reading", "label": "NCERT Biology Reading"},
-    {"id": "formula_rev", "label": "Formula Revision"},
-    {"id": "backlog", "label": "Backlog Cleared"},
-    {"id": "error_notebook", "label": "Error Notebook Updated"},
-    {"id": "website_work", "label": "Website Work (Max 1 hr)"},
-    {"id": "no_social", "label": "No Social Media Wastage"},
-    {"id": "sleep", "label": "Sleep Before 11 PM"},
+    {"id": "study_2hr", "label": "Studied at least 2 hours"},
+    {"id": "revise", "label": "Revised previous day's topics"},
+    {"id": "pyq", "label": "Solved PYQs / practice questions"},
+    {"id": "mistake_notebook", "label": "Updated Mistake Notebook"},
+    {"id": "sleep_7hr", "label": "Slept 7+ hours"},
 ]
 
+def label_for_score(score: int, total: int) -> str:
+    if total == 0:
+        return "—"
+    pct = score / total
+    if pct >= 0.9:
+        return "🔥 Excellent"
+    if pct >= 0.7:
+        return "✅ Good"
+    if pct >= 0.4:
+        return "⚠️ Average"
+    return "❌ Improve"
 
-# ── Models ────────────────────────────────────────────────────────────────────
+def today_str():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+# ─── Schemas ──────────────────────────────────────────────
 class TaskItem(BaseModel):
     id: str
     label: str
 
-
-class TaskListUpdate(BaseModel):
+class TasksUpdate(BaseModel):
     tasks: List[TaskItem]
 
-
-class ToggleTask(BaseModel):
+class ToggleRequest(BaseModel):
     task_id: str
-    date: Optional[str] = None  # defaults to today (UTC) if not given
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-async def _ensure_premium(request: Request):
-    user = await require_user(request)
-    if user.is_admin:
-        return user
-    top_ids = await get_top_user_ids()
-    if user.user_id not in top_ids:
-        raise HTTPException(status_code=403, detail="Daily Tracker is a Premium feature")
-    return user
-
-
-def _today_str():
-    return datetime.now(timezone.utc).date().isoformat()
-
-
-def _score_label(score, total):
-    if total == 0:
-        return "—"
-    pct = score / total
-    if pct >= (16 / 18):   # roughly matches the 16-18 "Excellent" band, scaled
-        return "🔥 Excellent"
-    if pct >= (13 / 18):
-        return "✅ Good"
-    if pct >= (10 / 18):
-        return "⚠️ Average"
-    return "❌ Improve"
-
-
-async def _get_or_create_tasks(user_id: str):
+# ─── Helpers ──────────────────────────────────────────────
+async def get_user_tasks(db, user_id: str):
     doc = await db.tracker_tasks.find_one({"user_id": user_id})
-    if doc:
+    if doc and doc.get("tasks"):
         return doc["tasks"]
-    tasks = [dict(t) for t in DEFAULT_TASKS]
-    await db.tracker_tasks.insert_one({"user_id": user_id, "tasks": tasks})
-    return tasks
+    return DEFAULT_TASKS
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# TASK LIST (customization)
-# ════════════════════════════════════════════════════════════════════════════
+# ─── Routes ───────────────────────────────────────────────
+
 @router.get("/tasks")
-async def get_tasks(request: Request):
-    user = await _ensure_premium(request)
-    tasks = await _get_or_create_tasks(user.user_id)
+async def list_tasks(user=Depends(get_current_user), db=Depends(get_db)):
+    tasks = await get_user_tasks(db, str(user["_id"]))
     return {"tasks": tasks}
 
 
 @router.put("/tasks")
-async def update_tasks(payload: TaskListUpdate, request: Request):
-    user = await _ensure_premium(request)
-    if len(payload.tasks) == 0:
+async def update_tasks(body: TasksUpdate, user=Depends(get_current_user), db=Depends(get_db)):
+    if len(body.tasks) == 0:
         raise HTTPException(status_code=400, detail="Add at least one task")
-    if len(payload.tasks) > 40:
-        raise HTTPException(status_code=400, detail="Max 40 tasks allowed")
 
-    tasks = [t.model_dump() for t in payload.tasks]
+    tasks = [t.dict() for t in body.tasks]
     await db.tracker_tasks.update_one(
-        {"user_id": user.user_id},
+        {"user_id": str(user["_id"])},
         {"$set": {"tasks": tasks}},
         upsert=True,
     )
-    return {"tasks": tasks}
+    return {"ok": True, "tasks": tasks}
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# TODAY'S CHECKLIST
-# ════════════════════════════════════════════════════════════════════════════
 @router.get("/today")
-async def get_today(request: Request):
-    user = await _ensure_premium(request)
-    today = _today_str()
-    tasks = await _get_or_create_tasks(user.user_id)
+async def get_today(user=Depends(get_current_user), db=Depends(get_db)):
+    user_id = str(user["_id"])
+    date = today_str()
+    tasks = await get_user_tasks(db, user_id)
 
-    entry = await db.tracker_entries.find_one({"user_id": user.user_id, "date": today})
-    completed_ids = set(entry.get("completed", [])) if entry else set()
+    entry = await db.tracker_daily.find_one({"user_id": user_id, "date": date})
+    done_ids = set(entry["done_ids"]) if entry else set()
 
-    checklist = [{"id": t["id"], "label": t["label"], "done": t["id"] in completed_ids} for t in tasks]
-    score = len(completed_ids)
+    result_tasks = [{**t, "done": t["id"] in done_ids} for t in tasks]
+    score = len(done_ids)
     total = len(tasks)
 
     return {
-        "date": today,
-        "tasks": checklist,
+        "date": date,
+        "tasks": result_tasks,
         "score": score,
         "total": total,
-        "label": _score_label(score, total),
+        "label": label_for_score(score, total),
     }
 
 
 @router.post("/today/toggle")
-async def toggle_task(payload: ToggleTask, request: Request):
-    user = await _ensure_premium(request)
-    target_date = payload.date or _today_str()
+async def toggle_task(body: ToggleRequest, user=Depends(get_current_user), db=Depends(get_db)):
+    user_id = str(user["_id"])
+    date = today_str()
+    tasks = await get_user_tasks(db, user_id)
+    valid_ids = {t["id"] for t in tasks}
 
-    entry = await db.tracker_entries.find_one({"user_id": user.user_id, "date": target_date})
-    completed = set(entry.get("completed", [])) if entry else set()
+    if body.task_id not in valid_ids:
+        raise HTTPException(status_code=400, detail="Unknown task")
 
-    if payload.task_id in completed:
-        completed.discard(payload.task_id)
+    entry = await db.tracker_daily.find_one({"user_id": user_id, "date": date})
+    done_ids = set(entry["done_ids"]) if entry else set()
+
+    if body.task_id in done_ids:
+        done_ids.remove(body.task_id)
     else:
-        completed.add(payload.task_id)
+        done_ids.add(body.task_id)
 
-    await db.tracker_entries.update_one(
-        {"user_id": user.user_id, "date": target_date},
-        {"$set": {"completed": list(completed), "updated_at": datetime.now(timezone.utc).isoformat()}},
+    await db.tracker_daily.update_one(
+        {"user_id": user_id, "date": date},
+        {"$set": {"done_ids": list(done_ids)}},
         upsert=True,
     )
 
-    tasks = await _get_or_create_tasks(user.user_id)
-    return {
-        "date": target_date,
-        "score": len(completed),
-        "total": len(tasks),
-        "label": _score_label(len(completed), len(tasks)),
-        "completed": list(completed),
-    }
+    score = len(done_ids)
+    total = len(tasks)
+    return {"score": score, "total": total, "label": label_for_score(score, total)}
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# WEEKLY / HISTORY VIEW
-# ════════════════════════════════════════════════════════════════════════════
 @router.get("/week")
-async def get_week(request: Request):
-    """Last 7 days (including today), Monday-aligned-ish — simple rolling 7 days."""
-    user = await _ensure_premium(request)
-    tasks = await _get_or_create_tasks(user.user_id)
+async def get_week(user=Depends(get_current_user), db=Depends(get_db)):
+    user_id = str(user["_id"])
+    tasks = await get_user_tasks(db, user_id)
     total = len(tasks)
 
-    today_date = datetime.now(timezone.utc).date()
+    today = datetime.now(timezone.utc).date()
+    # Monday of current week
+    start = today - timedelta(days=today.weekday())
+
     days = []
-    for i in range(6, -1, -1):
-        d = today_date - timedelta(days=i)
-        d_str = d.isoformat()
-        entry = await db.tracker_entries.find_one({"user_id": user.user_id, "date": d_str})
-        score = len(entry.get("completed", [])) if entry else 0
+    for i in range(7):
+        d = start + timedelta(days=i)
+        date_str = d.strftime("%Y-%m-%d")
+        entry = await db.tracker_daily.find_one({"user_id": user_id, "date": date_str})
+        score = len(entry["done_ids"]) if entry else 0
         days.append({
-            "date": d_str,
-            "weekday": d.strftime("%A"),
+            "date": date_str,
+            "weekday": d.strftime("%a"),
+            "is_today": date_str == today_str(),
+            "is_sunday": d.weekday() == 6,
             "score": score,
             "total": total,
-            "label": _score_label(score, total),
-            "is_today": d_str == today_date.isoformat(),
-            "is_sunday": d.weekday() == 6,
+            "label": label_for_score(score, total),
         })
+
     return {"days": days}
-
-
-@router.get("/history")
-async def get_history(request: Request, days: int = 30):
-    user = await _ensure_premium(request)
-    tasks = await _get_or_create_tasks(user.user_id)
-    total = len(tasks)
-    days = max(1, min(90, days))
-
-    today_date = datetime.now(timezone.utc).date()
-    result = []
-    for i in range(days - 1, -1, -1):
-        d = today_date - timedelta(days=i)
-        d_str = d.isoformat()
-        entry = await db.tracker_entries.find_one({"user_id": user.user_id, "date": d_str})
-        score = len(entry.get("completed", [])) if entry else 0
-        result.append({"date": d_str, "score": score, "total": total})
-    return {"history": result}
