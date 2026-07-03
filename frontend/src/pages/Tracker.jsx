@@ -25,8 +25,22 @@ const CATEGORY_LABEL = {
 
 const CATEGORY_LIST = ["study", "practice", "revision", "test", "other"];
 
+const GLOW_TEXT = { textShadow: "0 0 6px currentColor, 0 0 18px currentColor" };
+
+// ─── Ambient glow decoration — the soft "medical tech" backdrop feel ────
+function OrbitGlow({ size = 110 }) {
+    return (
+        <div className="absolute -z-10 pointer-events-none" aria-hidden="true"
+            style={{ top: "50%", left: "50%", width: size, height: size, transform: "translate(-50%,-50%)" }}>
+            <div className="absolute inset-0 rounded-full bg-[#00FF66]/25 blur-2xl" />
+            <div className="absolute inset-0 rounded-full border border-[#00FF66]/25 border-dashed animate-spin [animation-duration:18s]" />
+            <div className="absolute inset-3 rounded-full border border-[#00FF66]/10 animate-spin [animation-duration:12s] [animation-direction:reverse]" />
+        </div>
+    );
+}
+
 // ─── Circular progress ring ─────────────────────────────────────────────
-function ProgressRing({ percent, size = 56, stroke = 5, color = "#39FF14" }) {
+function ProgressRing({ percent, size = 56, stroke = 5, color = "#00FF66" }) {
     const radius = (size - stroke) / 2;
     const circumference = 2 * Math.PI * radius;
     const clamped = Math.max(0, Math.min(100, percent));
@@ -43,7 +57,7 @@ function ProgressRing({ percent, size = 56, stroke = 5, color = "#39FF14" }) {
                 />
             </g>
             <text x="50%" y="50%" dy=".35em" textAnchor="middle"
-                style={{ fontSize: size * 0.26, fontWeight: 900, fill: color, fontFamily: "monospace" }}>
+                style={{ fontSize: size * 0.26, fontWeight: 900, fill: color, fontFamily: "monospace", textShadow: "0 0 6px currentColor, 0 0 14px currentColor" }}>
                 {Math.round(clamped)}%
             </text>
         </svg>
@@ -102,15 +116,15 @@ export default function Tracker() {
     };
 
     if (!today) return (
-        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#39FF14] animate-spin" /></div>
+        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#00FF66] animate-spin" /></div>
     );
 
     return (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-center justify-between mb-6 fade-up">
                 <div>
-                    <p className="font-mono uppercase tracking-widest text-xs text-[#39FF14] mb-2">Study Tracker</p>
-                    <h1 className="font-heading text-3xl sm:text-4xl font-black">Task Tracker</h1>
+                    <p className="font-mono uppercase tracking-widest text-xs text-[#00FF66] mb-2">Study Tracker</p>
+                    <h1 className="font-heading text-3xl sm:text-4xl font-black" style={{ color: "#fff", textShadow: "0 0 10px rgba(0,255,102,0.5), 0 0 24px rgba(0,255,102,0.3)" }}>Task Tracker</h1>
                 </div>
                 <div className="flex gap-2">
                     {[
@@ -120,7 +134,7 @@ export default function Tracker() {
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setView(tab.id)}
                             className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
-                                view === tab.id ? "bg-[#39FF14] text-black" : "border border-[#39FF14]/30 text-white/60 hover:text-white"
+                                view === tab.id ? "bg-[#00FF66] text-black" : "border border-[#00FF66]/30 text-white/60 hover:text-white"
                             }`}>
                             {tab.label}
                         </button>
@@ -147,12 +161,15 @@ function TodayView({ today, onToggle, onAdd }) {
 
     return (
         <div className="fade-up">
-            <div className="glass-card p-5 mb-6 flex items-center justify-between">
+            <div className="glass-card p-5 mb-6 flex items-center justify-between relative overflow-hidden">
                 <div>
-                    <p className="font-bold text-lg">Today's Tasks</p>
+                    <p className="font-bold text-lg" style={{ ...GLOW_TEXT, color: "#fff" }}>Today's Tasks</p>
                     <p className="text-sm text-white/40">{today.score}/{today.total} completed</p>
                 </div>
-                <ProgressRing percent={pct} />
+                <div className="relative flex items-center justify-center">
+                    <OrbitGlow />
+                    <ProgressRing percent={pct} />
+                </div>
             </div>
 
             <div className="space-y-2">
@@ -161,17 +178,17 @@ function TodayView({ today, onToggle, onAdd }) {
                     return (
                         <button key={task.id} onClick={() => onToggle(task.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition ${
-                                task.done ? "border-[#39FF14]/40 bg-[#39FF14]/10" : "border-white/10 hover:border-white/20"
+                                task.done ? "border-[#00FF66]/40 bg-[#00FF66]/10" : "border-white/10 hover:border-white/20"
                             }`}>
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? "bg-[#39FF14]/20" : "bg-white/5"}`}>
-                                <Icon className={`w-4 h-4 ${task.done ? "text-[#39FF14]" : "text-white/50"}`} />
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? "bg-[#00FF66]/20" : "bg-white/5"}`}>
+                                <Icon className={`w-4 h-4 ${task.done ? "text-[#00FF66]" : "text-white/50"}`} />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className={`text-sm font-bold truncate ${task.done ? "text-white/50 line-through" : "text-white/90"}`}>{task.label}</div>
                                 <div className="text-xs text-white/35 font-mono uppercase tracking-wider">{CATEGORY_LABEL[task.category] || "Study"}</div>
                             </div>
                             {task.done
-                                ? <CheckCircle2 className="w-5 h-5 text-[#39FF14] shrink-0" />
+                                ? <CheckCircle2 className="w-5 h-5 text-[#00FF66] shrink-0" />
                                 : <Circle className="w-5 h-5 text-white/25 shrink-0" />
                             }
                         </button>
@@ -209,7 +226,7 @@ function QuickAddTask({ onAdd }) {
             <input value={label} onChange={(e) => setLabel(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
                 placeholder="e.g. Solve 30 Questions"
-                className="w-full bg-black/30 border border-[#39FF14]/25 rounded-lg px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-[#39FF14]" />
+                className="w-full bg-black/30 border border-[#00FF66]/25 rounded-lg px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-[#00FF66]" />
 
             <div className="flex flex-wrap gap-2 mb-3">
                 {CATEGORY_LIST.map(c => {
@@ -218,7 +235,7 @@ function QuickAddTask({ onAdd }) {
                     return (
                         <button key={c} type="button" onClick={() => setCategory(c)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                                active ? "bg-[#39FF14]/15 text-[#39FF14] border-[#39FF14]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
+                                active ? "bg-[#00FF66]/15 text-[#00FF66] border-[#00FF66]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
                             }`}>
                             <Icon className="w-3.5 h-3.5" />{CATEGORY_LABEL[c]}
                         </button>
@@ -227,7 +244,7 @@ function QuickAddTask({ onAdd }) {
             </div>
 
             <div className="flex gap-2 mb-3">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#39FF14]/15 text-[#39FF14] border border-[#39FF14]/30">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#00FF66]/15 text-[#00FF66] border border-[#00FF66]/30">
                     <Calendar className="w-3.5 h-3.5" />Today
                 </span>
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/40 border border-white/10">
@@ -236,7 +253,7 @@ function QuickAddTask({ onAdd }) {
             </div>
 
             <button onClick={submit} disabled={saving || !label.trim()}
-                className="w-full py-2.5 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#39FF14] hover:opacity-90 transition disabled:opacity-40">
+                className="w-full py-2.5 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition disabled:opacity-40">
                 {saving ? "Adding..." : "Add Task"}
             </button>
         </div>
@@ -245,34 +262,37 @@ function QuickAddTask({ onAdd }) {
 
 // ─── WEEK VIEW ───────────────────────────────────────────────────────────
 function WeekView({ week }) {
-    if (!week) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#39FF14] animate-spin" /></div>;
+    if (!week) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00FF66] animate-spin" /></div>;
 
     const completedDays = week.days.filter(d => d.total > 0 && d.score === d.total).length;
     const pct = week.days.length ? (completedDays / week.days.length) * 100 : 0;
 
     return (
         <div className="fade-up">
-            <div className="glass-card p-5 mb-6 flex items-center justify-between">
+            <div className="glass-card p-5 mb-6 flex items-center justify-between relative overflow-hidden">
                 <div>
-                    <p className="font-bold text-lg">This Week</p>
+                    <p className="font-bold text-lg" style={{ ...GLOW_TEXT, color: "#fff" }}>This Week</p>
                     <p className="text-sm text-white/40">{completedDays}/{week.days.length} completed</p>
                 </div>
-                <ProgressRing percent={pct} />
+                <div className="relative flex items-center justify-center">
+                    <OrbitGlow />
+                    <ProgressRing percent={pct} />
+                </div>
             </div>
 
             <div className="space-y-2">
                 {week.days.map(d => {
                     const complete = d.total > 0 && d.score === d.total;
                     const StatusIcon = complete ? CheckCircle2 : (d.is_past ? XCircle : Circle);
-                    const statusColor = complete ? "#39FF14" : (d.is_past ? "#FF3B30" : "rgba(255,255,255,0.3)");
+                    const statusColor = complete ? "#00FF66" : (d.is_past ? "#FF3B30" : "rgba(255,255,255,0.3)");
 
                     return (
-                        <div key={d.date} className={`glass-card p-4 flex items-center justify-between ${d.is_today ? "border-[#39FF14]/40" : ""}`}>
+                        <div key={d.date} className={`glass-card p-4 flex items-center justify-between ${d.is_today ? "border-[#00FF66]/40" : ""}`}>
                             <div className="flex items-center gap-3">
                                 {d.is_sunday && <Flame className="w-4 h-4 text-[#FFD700]" />}
                                 <div>
                                     <div className="font-bold text-sm">
-                                        {d.weekday} {d.is_today && <span className="text-[#39FF14] text-xs ml-1">(Today)</span>}
+                                        {d.weekday} {d.is_today && <span className="text-[#00FF66] text-xs ml-1">(Today)</span>}
                                     </div>
                                     <div className="text-xs text-white/40 mt-0.5">
                                         {d.total ? `${d.score}/${d.total} tasks done` : "No tasks set"}
@@ -322,7 +342,7 @@ function CustomView({ onSaved }) {
         } finally { setSaving(false); }
     };
 
-    if (!tasks) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#39FF14] animate-spin" /></div>;
+    if (!tasks) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00FF66] animate-spin" /></div>;
 
     return (
         <div className="fade-up">
@@ -349,8 +369,8 @@ function CustomView({ onSaved }) {
                 <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addTask()}
                     placeholder="Add a new task..."
-                    className="flex-1 bg-black/30 border border-[#39FF14]/25 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#39FF14]" />
-                <button onClick={addTask} className="px-4 bg-[#39FF14]/15 text-[#39FF14] border border-[#39FF14]/40 rounded-lg hover:bg-[#39FF14]/25 transition">
+                    className="flex-1 bg-black/30 border border-[#00FF66]/25 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#00FF66]" />
+                <button onClick={addTask} className="px-4 bg-[#00FF66]/15 text-[#00FF66] border border-[#00FF66]/40 rounded-lg hover:bg-[#00FF66]/25 transition">
                     <Plus className="w-4 h-4" />
                 </button>
             </div>
@@ -362,7 +382,7 @@ function CustomView({ onSaved }) {
                     return (
                         <button key={c} type="button" onClick={() => setNewCategory(c)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                                active ? "bg-[#39FF14]/15 text-[#39FF14] border-[#39FF14]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
+                                active ? "bg-[#00FF66]/15 text-[#00FF66] border-[#00FF66]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
                             }`}>
                             <Icon className="w-3.5 h-3.5" />{CATEGORY_LABEL[c]}
                         </button>
@@ -371,7 +391,7 @@ function CustomView({ onSaved }) {
             </div>
 
             <button onClick={save} disabled={saving}
-                className="w-full py-3 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#39FF14] hover:opacity-90 transition disabled:opacity-50">
+                className="w-full py-3 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
             </button>
         </div>
