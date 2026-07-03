@@ -16,6 +16,7 @@ import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
 import History from "@/pages/History";
 import NavBar from "@/components/NavBar";
+import BottomNav from "@/components/BottomNav";
 import Tracker from "@/pages/Tracker";
 import Mistakes from "@/pages/Mistakes";
 import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
@@ -24,14 +25,15 @@ function Protected({ children }) {
     const { user, loading } = useAuth();
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full border-4 border-[#39FF14]/30 border-t-[#39FF14] animate-spin" />
+            <div className="w-12 h-12 rounded-full border-4 border-[#00FF66]/30 border-t-[#00FF66] animate-spin" />
         </div>
     );
     if (!user) return <Navigate to="/" replace />;
     return (
         <>
             <NavBar />
-            {children}
+            <div className="pb-20 md:pb-0">{children}</div>
+            <BottomNav />
         </>
     );
 }
@@ -77,7 +79,7 @@ function App() {
                     toastOptions={{
                         style: {
                             background: "#0a110a",
-                            border: "1px solid rgba(57,255,20,0.3)",
+                            border: "1px solid rgba(0,255,102,0.3)",
                             color: "#fff",
                             fontFamily: "Outfit, sans-serif",
                         },

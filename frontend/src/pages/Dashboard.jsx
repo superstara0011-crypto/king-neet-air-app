@@ -19,15 +19,36 @@ function Avatar({ name, size = 10 }) {
     );
 }
 
+function ProgressRing({ percent, size = 72, stroke = 6, color = "#00FF66" }) {
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const clamped = Math.max(0, Math.min(100, percent));
+    const offset = circumference - (clamped / 100) * circumference;
+    return (
+        <svg width={size} height={size} className="shrink-0">
+            <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} fill="none" />
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth={stroke} fill="none"
+                    strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+                    style={{ transition: "stroke-dashoffset 0.5s ease" }} />
+            </g>
+            <text x="50%" y="50%" dy=".35em" textAnchor="middle"
+                style={{ fontSize: size * 0.24, fontWeight: 900, fill: color, fontFamily: "monospace" }}>
+                {Math.round(clamped)}%
+            </text>
+        </svg>
+    );
+}
+
 const PLAY_MODES = [
     { id: "pyq", path: "/play/pyq", icon: "📜", label: "PYQ Practice", desc: "2015–2024 papers", color: "#FFD700", bg: "rgba(255,215,0,0.08)" },
-    { id: "daily", path: "/play/daily_quiz", icon: "⚡", label: "Daily Challenge", desc: "+4 XP per correct • Streak bonus", color: "#39FF14", bg: "rgba(57,255,20,0.08)", badge: "TODAY" },
+    { id: "daily", path: "/play/daily_quiz", icon: "⚡", label: "Daily Challenge", desc: "+4 XP per correct • Streak bonus", color: "#00FF66", bg: "rgba(0,255,102,0.08)", badge: "TODAY" },
     { id: "mock", path: "/play/mock_test", icon: "🎯", label: "Mock Test", desc: "180 Qs • 3 Hours • NEET Pattern", color: "#00F0FF", bg: "rgba(0,240,255,0.08)" },
     { id: "chapter", path: "/play/chapter", icon: "📖", label: "Chapter Quiz", desc: "+2 XP per correct", color: "#B900FF", bg: "rgba(185,0,255,0.08)" },
 ];
 
 const SUBJECT_META = {
-    biology:   { name: "Biology",   icon: "🧬", color: "#39FF14", path: "/play/chapter?subject=biology" },
+    biology:   { name: "Biology",   icon: "🧬", color: "#00FF66", path: "/play/chapter?subject=biology" },
     physics:   { name: "Physics",   icon: "⚛️", color: "#00F0FF", path: "/play/chapter?subject=physics" },
     chemistry: { name: "Chemistry", icon: "🧪", color: "#B900FF", path: "/play/chapter?subject=chemistry" },
 };
@@ -62,7 +83,7 @@ export default function Dashboard() {
     const daysLeft = Math.max(0, Math.ceil((NEET_EXAM_DATE - new Date()) / (1000 * 60 * 60 * 24)));
 
     const heatColor = (lvl) => {
-        if (lvl === "completed") return "#39FF14";
+        if (lvl === "completed") return "#00FF66";
         if (lvl === "partial") return "#FFD700";
         return "rgba(255,255,255,0.06)";
     };
@@ -115,24 +136,25 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {/* XP + Level Bar */}
+            {/* Your Progress */}
             <div className="glass-card p-5 mb-6 fade-up">
+                <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-3">Your Progress</p>
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                        <Avatar name={user.name} size={12} />
+                        <ProgressRing percent={xpProgress} />
                         <div>
                             <div className="font-bold text-lg">@{user.username}</div>
-                            <span style={{ color: level.color || "#39FF14" }} className="font-mono text-sm font-bold">{level.emoji} {level.name}</span>
+                            <span style={{ color: level.color || "#00FF66" }} className="font-mono text-sm font-bold">{level.emoji} {level.name}</span>
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="font-mono text-2xl font-black text-[#39FF14]">{user.total_xp?.toLocaleString()} XP</div>
+                        <div className="font-mono text-2xl font-black text-[#00FF66]">{user.total_xp?.toLocaleString()} XP</div>
                         <div className="font-mono text-xs text-white/40">{xpToNext?.toLocaleString()} XP to next level</div>
                     </div>
                 </div>
                 <div className="bg-white/10 rounded-full h-3 overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-1000"
-                        style={{ width: `${xpProgress}%`, background: level.color || "#39FF14", boxShadow: `0 0 10px ${level.color || "#39FF14"}` }} />
+                        style={{ width: `${xpProgress}%`, background: level.color || "#00FF66", boxShadow: `0 0 10px ${level.color || "#00FF66"}` }} />
                 </div>
                 <div className="flex justify-between mt-1">
                     <span className="font-mono text-xs text-white/40">{level.level_min?.toLocaleString()} XP</span>
@@ -144,7 +166,7 @@ export default function Dashboard() {
             {/* Stats Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: "Total XP", value: user.total_xp?.toLocaleString() || 0, icon: "⚡", color: "#39FF14" },
+                    { label: "Total XP", value: user.total_xp?.toLocaleString() || 0, icon: "⚡", color: "#00FF66" },
                     { label: "Accuracy", value: `${user.questions_answered > 0 ? Math.round((user.correct_answers / user.questions_answered) * 100) : 0}%`, icon: "🎯", color: "#00F0FF" },
                     { label: "Answered", value: user.questions_answered?.toLocaleString() || 0, icon: "📝", color: "#FFD700" },
                     { label: "Streak", value: `🔥 ${user.streak || 0}`, icon: "", color: "#FF3B30" },
@@ -190,7 +212,7 @@ export default function Dashboard() {
                                     style={{
                                         background: d ? heatColor(d.level) : "rgba(255,255,255,0.06)",
                                         color: d?.level === "completed" ? "#000" : "rgba(255,255,255,0.3)",
-                                        boxShadow: d?.level === "completed" ? "0 0 8px rgba(57,255,20,0.5)" : "none",
+                                        boxShadow: d?.level === "completed" ? "0 0 8px rgba(0,255,102,0.5)" : "none",
                                         outline: d?.is_today ? "1.5px solid rgba(255,255,255,0.4)" : "none",
                                     }}>
                                     {d?.level === "completed" ? "✓" : ""}
@@ -207,10 +229,10 @@ export default function Dashboard() {
                 <div className="lg:col-span-2 space-y-8">
 
                     {/* XP System Info */}
-                    <div className="glass-card p-4 border border-[#39FF14]/20">
-                        <div className="font-mono text-xs uppercase tracking-widest text-[#39FF14] mb-2">⚡ XP System</div>
+                    <div className="glass-card p-4 border border-[#00FF66]/20">
+                        <div className="font-mono text-xs uppercase tracking-widest text-[#00FF66] mb-2">⚡ XP System</div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center">
-                            <div className="bg-white/5 rounded-lg p-2"><div className="font-black text-[#39FF14]">+4 XP</div><div className="text-white/40">Live/Daily correct</div></div>
+                            <div className="bg-white/5 rounded-lg p-2"><div className="font-black text-[#00FF66]">+4 XP</div><div className="text-white/40">Live/Daily correct</div></div>
                             <div className="bg-white/5 rounded-lg p-2"><div className="font-black text-[#00F0FF]">+2 XP</div><div className="text-white/40">Normal correct</div></div>
                             <div className="bg-white/5 rounded-lg p-2"><div className="font-black text-[#FF3B30]">-1 XP</div><div className="text-white/40">Wrong answer</div></div>
                             <div className="bg-white/5 rounded-lg p-2"><div className="font-black text-[#FFD700]">+10 XP</div><div className="text-white/40">Chapter bonus</div></div>
@@ -293,7 +315,7 @@ export default function Dashboard() {
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <p className="font-mono text-xs uppercase tracking-widest text-white/40">Recent Activity</p>
-                                <Link to="/history" className="font-mono text-xs text-[#39FF14] hover:underline">View all →</Link>
+                                <Link to="/history" className="font-mono text-xs text-[#00FF66] hover:underline">View all →</Link>
                             </div>
                             <div className="glass-card overflow-hidden">
                                 {history.map((h, i) => (
@@ -303,7 +325,7 @@ export default function Dashboard() {
                                             <div className="font-bold text-sm capitalize">{h.mode?.replace("_", " ")}</div>
                                             <div className="font-mono text-xs text-white/40">{h.correct}/{h.total} correct • {h.subject || "Mixed"}</div>
                                         </div>
-                                        <div className="font-mono text-sm font-black text-[#39FF14]">+{h.xp_earned} XP</div>
+                                        <div className="font-mono text-sm font-black text-[#00FF66]">+{h.xp_earned} XP</div>
                                     </div>
                                 ))}
                             </div>
@@ -314,21 +336,21 @@ export default function Dashboard() {
                 {/* RIGHT */}
                 <div className="space-y-6">
                     {/* Daily Challenge */}
-                    <div className="glass-card p-5 border border-[#39FF14]/25" style={{ background: "linear-gradient(135deg, rgba(57,255,20,0.05), rgba(0,0,0,0))" }}>
+                    <div className="glass-card p-5 border border-[#00FF66]/25" style={{ background: "linear-gradient(135deg, rgba(0,255,102,0.05), rgba(0,0,0,0))" }}>
                         <div className="flex items-center gap-2 mb-3">
-                            <Zap className="w-4 h-4 text-[#39FF14]" />
-                            <span className="font-mono text-xs uppercase tracking-widest text-[#39FF14]">Daily Challenge</span>
-                            {dailyDone && <span className="text-xs font-bold text-[#39FF14]">✅ Done!</span>}
+                            <Zap className="w-4 h-4 text-[#00FF66]" />
+                            <span className="font-mono text-xs uppercase tracking-widest text-[#00FF66]">Daily Challenge</span>
+                            {dailyDone && <span className="text-xs font-bold text-[#00FF66]">✅ Done!</span>}
                         </div>
                         <div className="font-black text-2xl mb-1">20 Questions</div>
                         <div className="text-white/40 text-sm mb-4">+4 XP per correct • Streak bonus</div>
                         <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="bg-white/5 rounded-xl p-3 text-center"><div className="font-black text-[#39FF14]">+4 XP</div><div className="text-xs text-white/40">Per Correct</div></div>
+                            <div className="bg-white/5 rounded-xl p-3 text-center"><div className="font-black text-[#00FF66]">+4 XP</div><div className="text-xs text-white/40">Per Correct</div></div>
                             <div className="bg-white/5 rounded-xl p-3 text-center"><div className="font-black text-[#FF3B30]">🔥 {user.streak || 0}</div><div className="text-xs text-white/40">Day Streak</div></div>
                         </div>
                         <button onClick={() => nav("/play/daily_quiz")}
                             className="w-full py-3 rounded-xl font-black text-sm text-black uppercase tracking-widest transition hover:opacity-90"
-                            style={{ background: dailyDone ? "#39FF1450" : "#39FF14", color: dailyDone ? "#39FF14" : "#000" }}>
+                            style={{ background: dailyDone ? "#00FF6650" : "#00FF66", color: dailyDone ? "#00FF66" : "#000" }}>
                             {dailyDone ? "✅ Completed" : "Start Challenge →"}
                         </button>
                     </div>
@@ -391,7 +413,7 @@ export default function Dashboard() {
                                 <Trophy className="w-4 h-4 text-[#FFD700]" />
                                 <span className="font-bold text-sm">Top Rankers</span>
                             </div>
-                            <Link to="/leaderboard" className="font-mono text-xs text-[#39FF14] hover:underline">View all →</Link>
+                            <Link to="/leaderboard" className="font-mono text-xs text-[#00FF66] hover:underline">View all →</Link>
                         </div>
                         <div className="space-y-3">
                             {leaderboard.map((r, i) => (
@@ -418,7 +440,7 @@ export default function Dashboard() {
                             <span className="font-bold text-sm text-[#FFD700]">14-Day Season</span>
                         </div>
                         <div className="text-xs text-white/50 space-y-1">
-                            <div className="flex items-center gap-2"><TrendingUp className="w-3 h-3 text-[#39FF14]" /><span>Top 6 → Level UP ⬆️</span></div>
+                            <div className="flex items-center gap-2"><TrendingUp className="w-3 h-3 text-[#00FF66]" /><span>Top 6 → Level UP ⬆️</span></div>
                             <div className="flex items-center gap-2"><span className="w-3 h-3 text-center text-[#FFD700]">—</span><span>Rank 7-8 → Same Level</span></div>
                             <div className="flex items-center gap-2"><TrendingDown className="w-3 h-3 text-[#FF3B30]" /><span>Rank 9-12 → Level DOWN ⬇️</span></div>
                         </div>

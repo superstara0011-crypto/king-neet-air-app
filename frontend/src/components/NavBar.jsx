@@ -29,18 +29,18 @@ export default function NavBar() {
     const linkCls = (p) =>
         `px-3 py-2 text-sm uppercase tracking-wider font-bold transition ${
             loc.pathname.startsWith(p)
-                ? "text-[#39FF14]"
+                ? "text-[#00FF66]"
                 : "text-white/70 hover:text-white"
         }`;
 
     return (
-        <header className="sticky top-0 z-40 border-b border-[#39FF14]/15 bg-[#050805]/80 backdrop-blur-xl">
+        <header className="sticky top-0 z-40 border-b border-[#00FF66]/15 bg-[#050805]/80 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
                 {/* Logo */}
                 <Link to="/dashboard" className="flex items-center gap-2">
                     <img src="/logo-navbar.png" alt="King NEET AIR" className="w-9 h-9 rounded-lg" />
                     <span className="font-heading font-black text-lg sm:text-xl tracking-tight">
-                        KING NEET <span className="text-[#39FF14] glow-text">AIR</span>
+                        KING NEET <span className="text-[#00FF66] glow-text">AIR</span>
                     </span>
                 </Link>
 
@@ -66,7 +66,7 @@ export default function NavBar() {
                         <>
                             <div className="hidden sm:flex flex-col items-end">
                                 <span className="font-mono text-xs text-white/60">@{user.username}</span>
-                                <span className="font-mono text-sm text-[#39FF14] font-bold">{user.total_xp?.toLocaleString()} XP</span>
+                                <span className="font-mono text-sm text-[#00FF66] font-bold">{user.total_xp?.toLocaleString()} XP</span>
                             </div>
                             <LevelBadge level={user.level} size="sm" />
                             {/* ✅ Privacy: Always show initials, never Google photo */}
