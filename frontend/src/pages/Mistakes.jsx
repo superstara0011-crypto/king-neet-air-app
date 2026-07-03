@@ -1,22 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Loader2, Brain, X, CheckCircle2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
-const SUBJECT_COLORS = { biology: "#39FF14", physics: "#00F0FF", chemistry: "#B900FF" };
+const SUBJECT_COLORS = { biology: "#00FF66", physics: "#00F0FF", chemistry: "#B900FF" };
 
 export default function Mistakes() {
     const [data, setData] = useState(null);
     const [filter, setFilter] = useState("all");
     const [expanded, setExpanded] = useState(null);
 
-    const load = () => {
+    const load = useCallback(() => {
         api.get(`/quiz/mistakes${filter !== "all" ? `?subject=${filter}` : ""}`)
             .then(r => setData(r.data))
             .catch(() => setData({ mistakes: [], counts: {}, total: 0 }));
-    };
+    }, [filter]);
 
-    useEffect(() => { load(); }, [filter]);
+    useEffect(() => { load(); }, [load]);
 
     const dismiss = async (id) => {
         try {
@@ -27,7 +27,7 @@ export default function Mistakes() {
     };
 
     if (!data) return (
-        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#39FF14] animate-spin" /></div>
+        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#00FF66] animate-spin" /></div>
     );
 
     return (
@@ -53,7 +53,7 @@ export default function Mistakes() {
 
             {data.mistakes.length === 0 ? (
                 <div className="glass-card p-12 text-center">
-                    <CheckCircle2 className="w-10 h-10 text-[#39FF14] mx-auto mb-3" />
+                    <CheckCircle2 className="w-10 h-10 text-[#00FF66] mx-auto mb-3" />
                     <p className="text-white/50 font-mono">No mistakes here — great job! 🎯</p>
                 </div>
             ) : (
@@ -69,7 +69,7 @@ export default function Mistakes() {
                                     <span className="text-xs text-white/40 flex items-center gap-1"><BookOpen className="w-3 h-3" />{m.chapter}</span>
                                 </div>
                                 <button onClick={() => dismiss(m.mistake_id)} title="Mark as reviewed"
-                                    className="text-white/30 hover:text-[#39FF14] transition">
+                                    className="text-white/30 hover:text-[#00FF66] transition">
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
@@ -83,7 +83,7 @@ export default function Mistakes() {
                             <div className="space-y-2 mb-3">
                                 {m.options.map((opt, i) => (
                                     <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
-                                        i === m.correct ? "border-[#39FF14] bg-[#39FF14]/10 text-[#39FF14]"
+                                        i === m.correct ? "border-[#00FF66] bg-[#00FF66]/10 text-[#00FF66]"
                                         : i === m.selected ? "border-[#FF3B30] bg-[#FF3B30]/10 text-[#FF3B30]"
                                         : "border-white/10 text-white/50"
                                     }`}>
