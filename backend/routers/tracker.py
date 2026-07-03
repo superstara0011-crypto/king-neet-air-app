@@ -2,14 +2,13 @@
 Daily Study Tracker router — King NEET AIR
 No premium restriction: any logged-in user can use this.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-# Adjust this import to match your actual deps.py
-from deps import get_current_user
 from database import db
+from deps import require_user
 
 router = APIRouter(prefix="/tracker", tags=["tracker"])
 
@@ -53,7 +52,7 @@ class ToggleRequest(BaseModel):
 
 
 # ─── Helpers ──────────────────────────────────────────────
-async def get_user_tasks(db, user_id: str):
+async def get_user_tasks(user_id: str):
     doc = await db.tracker_tasks.find_one({"user_id": user_id})
     if doc and doc.get("tasks"):
         tasks = doc["tasks"]
@@ -67,19 +66,21 @@ async def get_user_tasks(db, user_id: str):
 # ─── Routes ───────────────────────────────────────────────
 
 @router.get("/tasks")
-async def list_tasks(user=Depends(get_current_user)):
-    tasks = await get_user_tasks(db, str(user["_id"]))
+async def list_tasks(request: Request):
+    user = await require_user(request)
+    tasks = await get_user_tasks(user.user_id)
     return {"tasks": tasks}
 
 
 @router.put("/tasks")
-async def update_tasks(body: TasksUpdate, user=Depends(get_current_user)):
+async def update_tasks(body: TasksUpdate, request: Request):
+    user = await require_user(request)
     if len(body.tasks) == 0:
         raise HTTPException(status_code=400, detail="Add at least one task")
 
     tasks = [t.dict() for t in body.tasks]
     await db.tracker_tasks.update_one(
-        {"user_id": str(user["_id"])},
+        {"user_id": user.user_id},
         {"$set": {"tasks": tasks}},
         upsert=True,
     )
@@ -87,10 +88,11 @@ async def update_tasks(body: TasksUpdate, user=Depends(get_current_user)):
 
 
 @router.get("/today")
-async def get_today(user=Depends(get_current_user)):
-    user_id = str(user["_id"])
+async def get_today(request: Request):
+    user = await require_user(request)
+    user_id = user.user_id
     date = today_str()
-    tasks = await get_user_tasks(db, user_id)
+    tasks = await get_user_tasks(user_id)
 
     entry = await db.tracker_daily.find_one({"user_id": user_id, "date": date})
     done_ids = set(entry["done_ids"]) if entry else set()
@@ -109,10 +111,11 @@ async def get_today(user=Depends(get_current_user)):
 
 
 @router.post("/today/toggle")
-async def toggle_task(body: ToggleRequest, user=Depends(get_current_user)):
-    user_id = str(user["_id"])
+async def toggle_task(body: ToggleRequest, request: Request):
+    user = await require_user(request)
+    user_id = user.user_id
     date = today_str()
-    tasks = await get_user_tasks(db, user_id)
+    tasks = await get_user_tasks(user_id)
     valid_ids = {t["id"] for t in tasks}
 
     if body.task_id not in valid_ids:
@@ -138,13 +141,13 @@ async def toggle_task(body: ToggleRequest, user=Depends(get_current_user)):
 
 
 @router.get("/week")
-async def get_week(user=Depends(get_current_user)):
-    user_id = str(user["_id"])
-    tasks = await get_user_tasks(db, user_id)
+async def get_week(request: Request):
+    user = await require_user(request)
+    user_id = user.user_id
+    tasks = await get_user_tasks(user_id)
     total = len(tasks)
 
     today = datetime.now(timezone.utc).date()
-    # Monday of current week
     start = today - timedelta(days=today.weekday())
 
     days = []
