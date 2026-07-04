@@ -7,6 +7,33 @@ import {
     ChevronRight, CheckCircle2, Calendar, BookMarked, PlayCircle, Brain, AlertTriangle,
 } from "lucide-react";
 
+function StethoscopeGlow({ className = "" }) {
+    return (
+        <svg viewBox="0 0 200 200" className={className} aria-hidden="true">
+            <defs>
+                <radialGradient id="orbGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#00FF66" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#00FF66" stopOpacity="0" />
+                </radialGradient>
+                <filter id="stethGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+            <circle cx="140" cy="110" r="46" fill="url(#orbGlow)" />
+            <path d="M 40,30 C 20,55 20,95 44,118 C 64,136 96,140 118,126"
+                fill="none" stroke="#00FF66" strokeWidth="5" strokeLinecap="round"
+                opacity="0.85" filter="url(#stethGlow)" />
+            <circle cx="40" cy="30" r="7" fill="#00FF66" filter="url(#stethGlow)" />
+            <circle cx="140" cy="110" r="14" fill="none" stroke="#00FF66" strokeWidth="6" filter="url(#stethGlow)" />
+            <circle cx="140" cy="110" r="4" fill="#00FF66" filter="url(#stethGlow)" />
+        </svg>
+    );
+}
+
 function Avatar({ name, size = 10 }) {
     const initials = name ? name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : "?";
     const colors = ["#7C3AED", "#2563EB", "#059669", "#DC2626", "#D97706", "#DB2777"];
@@ -91,14 +118,21 @@ export default function Dashboard() {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-            {/* Exam Countdown Banner */}
-            <div className="flex items-center justify-between gap-3 mb-6 px-4 py-2.5 rounded-xl border border-[#FFD700]/25 fade-up"
+            {/* Exam Countdown Card */}
+            <div className="relative overflow-hidden flex items-center justify-between gap-3 mb-6 px-5 py-5 rounded-2xl border border-[#FFD700]/25 fade-up"
                 style={{ background: "linear-gradient(90deg, rgba(255,215,0,0.08), rgba(0,0,0,0))" }}>
-                <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#FFD700]" />
-                    <span className="font-mono text-xs sm:text-sm text-white/70">NEET 2027</span>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-[#FFD700]" />
+                        <span className="font-mono text-xs sm:text-sm text-white/70">NEET 2027</span>
+                    </div>
+                    <div className="font-heading text-4xl sm:text-5xl font-black text-[#00FF66]"
+                        style={{ textShadow: "0 0 10px rgba(0,255,102,0.6), 0 0 26px rgba(0,255,102,0.35)" }}>
+                        {daysLeft}
+                    </div>
+                    <span className="font-mono text-xs text-white/50 uppercase tracking-widest">Days Left</span>
                 </div>
-                <span className="font-mono text-sm font-black text-[#FFD700]">{daysLeft} Days Left</span>
+                <StethoscopeGlow className="absolute right-0 top-1/2 -translate-y-1/2 w-32 h-32 sm:w-40 sm:h-40 opacity-90" />
             </div>
 
             {/* Welcome Header */}
@@ -148,7 +182,7 @@ export default function Dashboard() {
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="font-mono text-2xl font-black text-[#00FF66]">{user.total_xp?.toLocaleString()} XP</div>
+                        <div className="font-mono text-2xl font-black text-[#00FF66]" style={{ textShadow: "0 0 8px rgba(0,255,102,0.5), 0 0 20px rgba(0,255,102,0.3)" }}>{user.total_xp?.toLocaleString()} XP</div>
                         <div className="font-mono text-xs text-white/40">{xpToNext?.toLocaleString()} XP to next level</div>
                     </div>
                 </div>
