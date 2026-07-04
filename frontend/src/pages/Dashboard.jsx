@@ -92,21 +92,20 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
             {/* Exam Countdown Card */}
-            <div className="relative overflow-hidden flex items-center justify-between gap-3 mb-6 px-5 py-5 rounded-2xl border border-[#FFD700]/25 fade-up"
-                style={{ background: "linear-gradient(90deg, rgba(255,215,0,0.08), rgba(0,0,0,0))" }}>
+            <div className="relative overflow-hidden flex items-center justify-between gap-3 mb-6 px-5 py-8 sm:py-10 rounded-2xl border border-[#FFD700]/25 fade-up"
+                style={{ background: "linear-gradient(90deg, rgba(255,215,0,0.04), #060806)" }}>
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
                         <Calendar className="w-4 h-4 text-[#FFD700]" />
                         <span className="font-mono text-xs sm:text-sm text-white/70">NEET 2027</span>
                     </div>
-                    <div className="font-heading text-4xl sm:text-5xl font-black text-[#00FF66]"
-                        style={{ textShadow: "0 0 10px rgba(0,255,102,0.6), 0 0 26px rgba(0,255,102,0.35)" }}>
+                    <div className="font-heading text-4xl sm:text-5xl font-black text-[#00FF66]">
                         {daysLeft}
                     </div>
                     <span className="font-mono text-xs text-white/50 uppercase tracking-widest">Days Left</span>
                 </div>
                 <img src="/steth-illustration.png" alt=""
-                    className="absolute right-0 top-1/2 -translate-y-1/2 h-28 sm:h-36 w-auto object-contain opacity-95 pointer-events-none" />
+                    className="absolute right-0 top-1/2 -translate-y-1/2 h-40 sm:h-52 w-auto object-contain opacity-95 pointer-events-none" />
             </div>
 
             {/* Welcome Header */}
