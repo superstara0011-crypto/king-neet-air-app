@@ -9,27 +9,47 @@ import {
 
 function StethoscopeGlow({ className = "" }) {
     return (
-        <svg viewBox="0 0 200 200" className={className} aria-hidden="true">
+        <svg viewBox="0 0 220 220" className={className} aria-hidden="true">
             <defs>
                 <radialGradient id="orbGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#00FF66" stopOpacity="0.9" />
+                    <stop offset="0%" stopColor="#B6FFCF" stopOpacity="1" />
+                    <stop offset="35%" stopColor="#00FF66" stopOpacity="0.9" />
                     <stop offset="100%" stopColor="#00FF66" stopOpacity="0" />
                 </radialGradient>
-                <filter id="stethGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
+                <linearGradient id="tubeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#B6FFCF" />
+                    <stop offset="50%" stopColor="#00FF66" />
+                    <stop offset="100%" stopColor="#049944" />
+                </linearGradient>
+                <filter id="stethSoftBlur" x="-80%" y="-80%" width="260%" height="260%">
+                    <feGaussianBlur stdDeviation="4" />
+                </filter>
+                <filter id="stethBigBlur" x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur stdDeviation="10" />
                 </filter>
             </defs>
-            <circle cx="140" cy="110" r="46" fill="url(#orbGlow)" />
-            <path d="M 40,30 C 20,55 20,95 44,118 C 64,136 96,140 118,126"
-                fill="none" stroke="#00FF66" strokeWidth="5" strokeLinecap="round"
-                opacity="0.85" filter="url(#stethGlow)" />
-            <circle cx="40" cy="30" r="7" fill="#00FF66" filter="url(#stethGlow)" />
-            <circle cx="140" cy="110" r="14" fill="none" stroke="#00FF66" strokeWidth="6" filter="url(#stethGlow)" />
-            <circle cx="140" cy="110" r="4" fill="#00FF66" filter="url(#stethGlow)" />
+
+            {/* faint DNA-like helix strands for depth */}
+            <g opacity="0.25" filter="url(#stethSoftBlur)">
+                <path d="M 10,10 C 40,40 0,70 30,100 C 60,130 20,160 50,190" fill="none" stroke="#00FF66" strokeWidth="2" />
+                <path d="M 30,10 C 60,40 20,70 50,100 C 80,130 40,160 70,190" fill="none" stroke="#00FF66" strokeWidth="2" />
+            </g>
+
+            <circle cx="150" cy="120" r="55" fill="url(#orbGlow)" filter="url(#stethBigBlur)" opacity="0.8" />
+
+            {/* tube: dark base + bright gradient highlight for cylindrical volume */}
+            <path d="M 45,35 C 22,60 22,100 48,124 C 70,144 104,148 128,132"
+                fill="none" stroke="#049944" strokeWidth="9" strokeLinecap="round" opacity="0.9" filter="url(#stethSoftBlur)" />
+            <path d="M 45,35 C 22,60 22,100 48,124 C 70,144 104,148 128,132"
+                fill="none" stroke="url(#tubeGrad)" strokeWidth="5" strokeLinecap="round" />
+
+            <circle cx="45" cy="35" r="8" fill="url(#tubeGrad)" filter="url(#stethSoftBlur)" />
+            <circle cx="45" cy="35" r="4" fill="#E8FFF0" />
+
+            {/* chestpiece: metallic ring + specular highlight */}
+            <circle cx="150" cy="120" r="19" fill="#06210f" stroke="url(#tubeGrad)" strokeWidth="7" />
+            <path d="M 140,108 A 14,14 0 0 1 160,110" fill="none" stroke="#E8FFF0" strokeWidth="2" opacity="0.8" />
+            <circle cx="150" cy="120" r="5" fill="#00FF66" filter="url(#stethSoftBlur)" />
         </svg>
     );
 }
