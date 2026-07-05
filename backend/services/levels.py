@@ -1,15 +1,15 @@
 # 10 Level System with 14-day leaderboard reset
 LEVELS = [
     (0,      500,    "Seed",         "🌱", "#88FF88"),
-    (500,    2000,   "Aspirant",     "📖", "#00FFCC"),
-    (2000,   5000,   "Scholar",      "🎓", "#00A3FF"),
-    (5000,   10000,  "Warrior",      "⚔️", "#B900FF"),
-    (10000,  20000,  "Champion",     "🏆", "#FF007A"),
-    (20000,  40000,  "Elite",        "💎", "#FF6B00"),
-    (40000,  70000,  "KING NEET",    "👑", "#FF3B30"),
-    (70000,  110000, "AIR LEGEND",   "🌟", "#FFD700"),
-    (110000, 160000, "NEET MASTER",  "🔱", "#FF00FF"),
-    (160000, 10**9,  "GOD OF NEET",  "⚡", "#FFFFFF"),
+    (500,    2000,   "Sprout",       "🌿", "#00FFCC"),
+    (2000,   5000,   "Leaf",         "🍃", "#00A3FF"),
+    (5000,   10000,  "Sapling",      "🌾", "#B900FF"),
+    (10000,  20000,  "Scholar",      "🌳", "#FF007A"),
+    (20000,  40000,  "Medic",        "🧬", "#FF6B00"),
+    (40000,  70000,  "Healer",       "⚕️", "#FF3B30"),
+    (70000,  110000, "Elite",        "👑", "#FFD700"),
+    (110000, 160000, "NEET Titan",   "💎", "#FF00FF"),
+    (160000, 10**9,  "GOD OF NEET",  "🔥", "#FFFFFF"),
 ]
 
 
@@ -27,7 +27,7 @@ def get_level(xp: int):
             }
     return {
         "name": "GOD OF NEET",
-        "emoji": "⚡",
+        "emoji": "🔥",
         "color": "#FFFFFF",
         "current_xp": xp,
         "level_min": 160000,
