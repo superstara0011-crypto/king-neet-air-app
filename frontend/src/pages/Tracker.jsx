@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import {
     Loader2, CheckCircle2, Circle, XCircle, Calendar, Clock, Plus, Trash2,
     Flame, GripVertical, BookOpen, Target, ScrollText, ClipboardCheck, MoreHorizontal,
+    MoreVertical, Play, TrendingUp, ListChecks, Timer, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +25,14 @@ const CATEGORY_LABEL = {
 };
 
 const CATEGORY_LIST = ["study", "practice", "revision", "test", "other"];
+
+const CATEGORY_COLOR = {
+    study: "#00FF66",
+    practice: "#00A3FF",
+    revision: "#FFA500",
+    test: "#FF3B30",
+    other: "#9CA3AF",
+};
 
 const GLOW_TEXT = { textShadow: "0 0 6px currentColor, 0 0 18px currentColor" };
 
@@ -94,6 +103,20 @@ function ProgressRing({ percent, size = 56, stroke = 5, color = "#00FF66" }) {
     );
 }
 
+// ─── Small stat card for the top row ────────────────────────────────────
+function StatCard({ icon, value, label, sub, color }) {
+    return (
+        <div className="glass-card p-3.5" style={{ borderColor: color + "25" }}>
+            <div className="flex items-center gap-1.5 mb-1.5" style={{ color }}>
+                {icon}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">{label}</span>
+            </div>
+            <div className="font-mono text-xl font-black" style={{ color }}>{value}</div>
+            <div className="text-[11px] text-white/35 truncate">{sub}</div>
+        </div>
+    );
+}
+
 export default function Tracker() {
     const { user } = useAuth();
     const [today, setToday] = useState(null);
@@ -145,6 +168,19 @@ export default function Tracker() {
         }
     };
 
+    const deleteTask = async (taskId) => {
+        try {
+            const cur = await api.get("/tracker/tasks");
+            const tasks = cur.data.tasks.filter(t => t.id !== taskId);
+            await api.put("/tracker/tasks", { tasks });
+            toast.success("Task removed");
+            loadToday();
+            loadWeek();
+        } catch {
+            toast.error("Couldn't remove task");
+        }
+    };
+
     if (!today) return (
         <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#00FF66] animate-spin" /></div>
     );
@@ -156,10 +192,11 @@ export default function Tracker() {
                     <p className="font-mono uppercase tracking-widest text-xs text-[#00FF66] mb-2">Study Tracker</p>
                     <h1 className="font-heading text-3xl sm:text-4xl font-black" style={{ color: "#fff", textShadow: "0 0 10px rgba(0,255,102,0.5), 0 0 24px rgba(0,255,102,0.3)" }}>Task Tracker</h1>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     {[
                         { id: "today", label: "Daily" },
                         { id: "week", label: "Weekly" },
+                        { id: "progress", label: "Progress" },
                         { id: "custom", label: "Custom" },
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setView(tab.id)}
@@ -172,11 +209,29 @@ export default function Tracker() {
                 </div>
             </div>
 
+            {(() => {
+                const weekTotal = week ? week.days.reduce((s, d) => s + d.total, 0) : 0;
+                const weekScore = week ? week.days.reduce((s, d) => s + d.score, 0) : 0;
+                const weekPct = weekTotal ? Math.round((weekScore / weekTotal) * 100) : 0;
+                const donePct = today.total ? Math.round((today.score / today.total) * 100) : 0;
+                return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 fade-up">
+                        <StatCard icon={<ListChecks className="w-4 h-4" />} value={today.total} label="Total Tasks" sub="Created" color="#FFD700" />
+                        <StatCard icon={<CheckCircle2 className="w-4 h-4" />} value={today.score} label="Completed" sub={`${donePct}% Completed`} color="#00FF66" />
+                        <StatCard icon={<TrendingUp className="w-4 h-4" />} value={`${weekPct}%`} label="Weekly Progress" sub="This week" color="#00F0FF" />
+                        <StatCard icon={<Flame className="w-4 h-4" />} value={user?.streak ?? 0} label="Current Streak" sub="Keep it up!" color="#FF6B00" />
+                    </div>
+                );
+            })()}
+
             {view === "today" && (
-                <TodayView today={today} onToggle={toggleTask} onAdd={addQuickTask} />
+                <TodayView today={today} onToggle={toggleTask} onAdd={addQuickTask} onDelete={deleteTask} />
             )}
             {view === "week" && (
                 <WeekView week={week} />
+            )}
+            {view === "progress" && (
+                <ProgressView />
             )}
             {view === "custom" && (
                 <CustomView onSaved={() => { loadToday(); loadWeek(); }} />
@@ -186,9 +241,10 @@ export default function Tracker() {
 }
 
 // ─── TODAY VIEW ──────────────────────────────────────────────────────────
-function TodayView({ today, onToggle, onAdd }) {
+function TodayView({ today, onToggle, onAdd, onDelete }) {
     const pct = today.total ? (today.score / today.total) * 100 : 0;
     const [filter, setFilter] = useState("all");
+    const [menuFor, setMenuFor] = useState(null);
 
     const counts = { all: today.tasks.length };
     CATEGORY_LIST.forEach(c => { counts[c] = today.tasks.filter(t => t.category === c).length; });
@@ -221,39 +277,63 @@ function TodayView({ today, onToggle, onAdd }) {
             <div className="space-y-2">
                 {visibleTasks.map(task => {
                     const Icon = CATEGORY_ICON[task.category] || BookOpen;
+                    const catColor = CATEGORY_COLOR[task.category] || "#00FF66";
                     const timeStatus = getTaskTimeStatus(task);
                     const isCurrent = timeStatus === "current";
                     const isMissed = timeStatus === "missed";
+
                     return (
-                        <button key={task.id} onClick={() => onToggle(task.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition ${
+                        <div key={task.id}
+                            className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition ${
                                 task.done ? "border-[#00FF66]/40 bg-[#00FF66]/10"
                                 : isCurrent ? "border-[#00FF66]/60 bg-[#00FF66]/[0.06] shadow-[0_0_16px_rgba(0,255,102,0.15)]"
                                 : "border-white/10 hover:border-white/20"
                             }`}>
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? "bg-[#00FF66]/20" : "bg-white/5"}`}>
+                            <button onClick={() => onToggle(task.id)} className="shrink-0">
+                                {task.done
+                                    ? <CheckCircle2 className="w-6 h-6 text-[#00FF66]" />
+                                    : isCurrent
+                                        ? <span className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#00FF66]"><Play className="w-2.5 h-2.5 text-[#00FF66] fill-[#00FF66]" /></span>
+                                        : <Circle className="w-6 h-6 text-white/25" />
+                                }
+                            </button>
+
+                            <button onClick={() => onToggle(task.id)} className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? "bg-[#00FF66]/20" : "bg-white/5"}`}>
                                 <Icon className={`w-4 h-4 ${task.done ? "text-[#00FF66]" : "text-white/50"}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
+                            </button>
+
+                            <button onClick={() => onToggle(task.id)} className="flex-1 min-w-0 text-left">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className={`text-sm font-bold truncate ${task.done ? "text-white/50 line-through" : "text-white/90"}`}>{task.label}</span>
-                                    {isCurrent && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#00FF66] text-black shrink-0">Now</span>}
                                     {isMissed && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#FF3B30]/20 text-[#FF3B30] shrink-0">Missed</span>}
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-white/35 font-mono">
-                                    <span className="uppercase tracking-wider">{CATEGORY_LABEL[task.category] || "Study"}</span>
-                                    {task.start_time && <>
-                                        <span>·</span>
-                                        <span>{formatTime12h(task.start_time)}</span>
-                                        {task.duration_minutes && <span className="text-white/25">({formatDuration(task.duration_minutes)})</span>}
-                                    </>}
+                                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1"
+                                    style={{ background: catColor + "22", color: catColor }}>
+                                    {CATEGORY_LABEL[task.category] || "Study"}
+                                </span>
+                            </button>
+
+                            {task.start_time && (
+                                <div className="text-right shrink-0">
+                                    <div className="text-xs font-mono text-white/70">{formatTime12h(task.start_time)}</div>
+                                    {task.duration_minutes && <div className="text-[10px] font-mono text-white/30">{formatDuration(task.duration_minutes)}</div>}
                                 </div>
+                            )}
+
+                            <div className="relative shrink-0">
+                                <button onClick={() => setMenuFor(menuFor === task.id ? null : task.id)} className="text-white/20 hover:text-white/50 p-1">
+                                    <MoreVertical className="w-4 h-4" />
+                                </button>
+                                {menuFor === task.id && (
+                                    <div className="absolute right-0 top-7 z-10 bg-[#0a0f0a] border border-white/10 rounded-lg overflow-hidden shadow-xl">
+                                        <button onClick={() => { setMenuFor(null); onDelete(task.id); }}
+                                            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-[#FF3B30] hover:bg-[#FF3B30]/10 whitespace-nowrap">
+                                            <Trash2 className="w-3.5 h-3.5" />Delete
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {task.done
-                                ? <CheckCircle2 className="w-5 h-5 text-[#00FF66] shrink-0" />
-                                : <Circle className="w-5 h-5 text-white/25 shrink-0" />
-                            }
-                        </button>
+                        </div>
                     );
                 })}
                 {visibleTasks.length === 0 && (
@@ -263,9 +343,151 @@ function TodayView({ today, onToggle, onAdd }) {
 
             <QuickAddTask onAdd={onAdd} />
 
+            <FocusMode />
+
             <div className="glass-card p-4 mt-4 flex items-start gap-3">
                 <span className="text-lg">💡</span>
                 <p className="text-sm text-white/50">Break big goals into daily tasks and stay consistent!</p>
+            </div>
+        </div>
+    );
+}
+
+// ─── Focus Mode — simple pomodoro-style countdown, no backend needed ────
+function FocusMode() {
+    const [seconds, setSeconds] = useState(25 * 60);
+    const [running, setRunning] = useState(false);
+
+    useEffect(() => {
+        if (!running) return;
+        if (seconds <= 0) { setRunning(false); return; }
+        const t = setInterval(() => setSeconds(s => (s > 0 ? s - 1 : 0)), 1000);
+        return () => clearInterval(t);
+    }, [running, seconds]);
+
+    const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const ss = String(seconds % 60).padStart(2, "0");
+
+    const reset = () => { setRunning(false); setSeconds(25 * 60); };
+
+    return (
+        <div className="glass-card p-4 mt-4">
+            <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="font-bold text-sm flex items-center gap-1.5">
+                        <Timer className="w-4 h-4 text-[#00FF66]" />Focus Mode
+                    </p>
+                    <p className="text-xs text-white/40 mt-0.5">Eliminate distractions. Boost your productivity.</p>
+                </div>
+                <div className="font-mono text-2xl font-black text-[#00FF66] shrink-0" style={GLOW_TEXT}>{mm}:{ss}</div>
+            </div>
+            <div className="flex gap-2 mt-3">
+                <button onClick={() => setRunning(r => !r)}
+                    className="flex-1 py-2 rounded-xl font-black text-xs text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition">
+                    {running ? "Pause" : seconds === 25 * 60 ? "Start Focus Session" : "Resume"}
+                </button>
+                {seconds !== 25 * 60 && (
+                    <button onClick={reset} className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest border border-white/15 text-white/60 hover:text-white transition">
+                        Reset
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── PROGRESS VIEW — monthly calendar heatmap + streaks ─────────────────
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function ProgressView() {
+    const now = new Date();
+    const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+    const [data, setData] = useState(null);
+
+    useEffect(() => {
+        setData(null);
+        api.get(`/tracker/calendar?year=${cursor.year}&month=${cursor.month}`)
+            .then(r => setData(r.data))
+            .catch(() => setData(null));
+    }, [cursor]);
+
+    const changeMonth = (delta) => {
+        setCursor(c => {
+            let m = c.month + delta, y = c.year;
+            if (m > 12) { m = 1; y += 1; }
+            if (m < 1) { m = 12; y -= 1; }
+            return { year: y, month: m };
+        });
+    };
+
+    if (!data) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00FF66] animate-spin" /></div>;
+
+    const leadingBlanks = (data.days[0].weekday + 1) % 7; // Monday=0..Sunday=6 -> Sunday-first grid
+    const monthPct = data.month_total ? Math.round((data.month_completed / data.month_total) * 100) : 0;
+
+    return (
+        <div className="fade-up space-y-4">
+            <div className="glass-card p-4">
+                <div className="flex items-center justify-between mb-4">
+                    <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-lg border border-white/10 text-white/50 hover:text-white transition">
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-bold text-sm">{MONTH_NAMES[cursor.month - 1]} {cursor.year}</span>
+                    <button onClick={() => changeMonth(1)} className="p-1.5 rounded-lg border border-white/10 text-white/50 hover:text-white transition">
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1.5 mb-2">
+                    {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                        <div key={i} className="text-center text-[10px] font-bold text-white/30">{d}</div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                    {Array.from({ length: leadingBlanks }).map((_, i) => <div key={`b${i}`} />)}
+                    {data.days.map(d => {
+                        const complete = !d.is_future && d.total > 0 && d.score === d.total;
+                        const missed = d.is_past && d.total > 0 && d.score < d.total;
+                        return (
+                            <div key={d.date} className={`aspect-square rounded-lg flex items-center justify-center text-xs font-bold relative ${
+                                d.is_today ? "ring-2 ring-[#00FF66]" : ""
+                            }`}
+                                style={{
+                                    background: complete ? "#00FF66" : missed ? "rgba(255,59,48,0.15)" : "rgba(255,255,255,0.04)",
+                                    color: complete ? "#000" : missed ? "#FF3B30" : d.is_future ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.6)",
+                                }}>
+                                {complete ? <CheckCircle2 className="w-4 h-4" /> : missed ? <XCircle className="w-3.5 h-3.5" /> : d.day}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="flex items-center gap-4 mt-4 text-[11px] text-white/40">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#00FF66]" />Completed</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white/10" />Pending</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#FF3B30]/20" />Missed</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <div className="glass-card p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1">Streak</p>
+                    <p className="font-mono text-2xl font-black text-[#FF6B00]">🔥 {data.current_streak} <span className="text-sm text-white/40">Days</span></p>
+                </div>
+                <div className="glass-card p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1">Best Streak</p>
+                    <p className="font-mono text-2xl font-black text-[#FFD700]">{data.best_streak} <span className="text-sm text-white/40">Days</span></p>
+                </div>
+            </div>
+
+            <div className="glass-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-bold">Tasks Completed</p>
+                    <p className="font-mono text-sm text-white/50">{data.month_completed}/{data.month_total}</p>
+                </div>
+                <div className="bg-white/10 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-full rounded-full bg-[#00FF66] transition-all" style={{ width: `${monthPct}%` }} />
+                </div>
             </div>
         </div>
     );

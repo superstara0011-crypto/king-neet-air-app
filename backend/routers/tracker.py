@@ -181,3 +181,79 @@ async def get_week(request: Request):
         })
 
     return {"days": days}
+
+
+@router.get("/calendar")
+async def get_calendar(request: Request, year: int, month: int):
+    """Month view for the Progress tab — daily completion + streaks."""
+    import calendar as cal
+
+    user = await require_user(request)
+    user_id = user.user_id
+    tasks = await get_user_tasks(user_id)
+    total = len(tasks)
+
+    _, days_in_month = cal.monthrange(year, month)
+    today = datetime.now(timezone.utc).date()
+
+    entries = await db.tracker_daily.find({"user_id": user_id}).to_list(3000)
+    score_by_date = {e["date"]: len(e.get("done_ids", [])) for e in entries}
+
+    days = []
+    for d in range(1, days_in_month + 1):
+        date_obj = datetime(year, month, d).date()
+        date_str = date_obj.strftime("%Y-%m-%d")
+        score = score_by_date.get(date_str, 0)
+        days.append({
+            "date": date_str,
+            "day": d,
+            "score": score,
+            "total": total,
+            "is_today": date_obj == today,
+            "is_future": date_obj > today,
+            "is_past": date_obj < today,
+            "weekday": date_obj.weekday(),  # Monday=0 ... Sunday=6
+        })
+
+    # ── Streaks: scan all recorded days chronologically ──
+    all_dates = sorted(score_by_date.keys())
+    best_streak = 0
+    if all_dates and total > 0:
+        run = 0
+        d = datetime.strptime(all_dates[0], "%Y-%m-%d").date()
+        while d <= today:
+            ds = d.strftime("%Y-%m-%d")
+            s = score_by_date.get(ds, 0)
+            if s == total:
+                run += 1
+                best_streak = max(best_streak, run)
+            else:
+                run = 0
+            d += timedelta(days=1)
+
+    current_streak = 0
+    if total > 0:
+        d = today
+        while True:
+            ds = d.strftime("%Y-%m-%d")
+            s = score_by_date.get(ds, 0)
+            if s == total:
+                current_streak += 1
+                d -= timedelta(days=1)
+            else:
+                break
+
+    # ── Month-to-date completion ──
+    mtd_days = [x for x in days if not x["is_future"]]
+    month_total = sum(x["total"] for x in mtd_days)
+    month_score = sum(x["score"] for x in mtd_days)
+
+    return {
+        "year": year,
+        "month": month,
+        "days": days,
+        "current_streak": current_streak,
+        "best_streak": best_streak,
+        "month_completed": month_score,
+        "month_total": month_total,
+    }
