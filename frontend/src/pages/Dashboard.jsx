@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import {
     Trophy, Zap, BookOpen, Target, Clock, TrendingUp, TrendingDown, Star, Flame,
-    ChevronRight, CheckCircle2, Calendar, BookMarked, PlayCircle, Brain, AlertTriangle,
+    ChevronRight, CheckCircle2, Calendar, BookMarked, PlayCircle, Brain,
 } from "lucide-react";
 
 function Avatar({ name, size = 10 }) {
@@ -46,12 +46,6 @@ const PLAY_MODES = [
     { id: "mock", path: "/play/mock_test", icon: "🎯", label: "Mock Test", desc: "180 Qs • 3 Hours • NEET Pattern", color: "#00F0FF", bg: "rgba(0,240,255,0.08)" },
     { id: "chapter", path: "/play/chapter", icon: "📖", label: "Chapter Quiz", desc: "+2 XP per correct", color: "#B900FF", bg: "rgba(185,0,255,0.08)" },
 ];
-
-const SUBJECT_META = {
-    biology:   { name: "Biology",   icon: "🧬", color: "#00FF66", path: "/play/chapter?subject=biology" },
-    physics:   { name: "Physics",   icon: "⚛️", color: "#00F0FF", path: "/play/chapter?subject=physics" },
-    chemistry: { name: "Chemistry", icon: "🧪", color: "#B900FF", path: "/play/chapter?subject=chemistry" },
-};
 
 // NEET 2027 exam date — update this if the official date is announced/changed
 const NEET_EXAM_DATE = new Date("2027-05-03T00:00:00Z");
@@ -246,76 +240,9 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Play Modes */}
-                    <div>
-                        <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-3">Choose Mode</p>
-                        <div className="grid grid-cols-2 gap-3">
-                            {PLAY_MODES.map(m => (
-                                <button key={m.id} onClick={() => nav(m.path)}
-                                    className="relative p-5 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    style={{ background: m.bg, borderColor: m.color + "30" }}>
-                                    {m.badge && <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: m.color, color: "#000" }}>{m.badge}</span>}
-                                    {dailyDone && m.id === "daily" && <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full bg-white/20">✅ DONE</span>}
-                                    <div className="text-2xl mb-2">{m.icon}</div>
-                                    <div className="font-bold text-sm text-white mb-1">{m.label}</div>
-                                    <div className="text-xs text-white/50">{m.desc}</div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Subjects with Real Progress */}
-                    <div>
-                        <p className="font-mono text-xs uppercase tracking-widest text-white/40 mb-3">Practice by Subject</p>
-                        <div className="space-y-3">
-                            {Object.entries(SUBJECT_META).map(([key, s]) => {
-                                const prog = stats?.subject_progress?.[key];
-                                const pct = prog?.accuracy ?? 0;
-                                const attempted = prog?.attempted ?? 0;
-                                return (
-                                    <button key={key} onClick={() => nav(s.path)}
-                                        className="glass-card w-full p-4 text-left transition-all hover:scale-[1.01]" style={{ borderColor: s.color + "30" }}>
-                                        <div className="flex items-center gap-3 mb-2.5">
-                                            <div className="text-2xl flex-shrink-0">{s.icon}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-bold text-sm" style={{ color: s.color }}>{s.name}</span>
-                                                    <span className="font-mono text-xs text-white/40">
-                                                        {attempted > 0 ? `${pct}% accuracy · ${attempted} Qs` : "Start practicing →"}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <ChevronRight className="w-4 h-4 text-white/30 flex-shrink-0" />
-                                        </div>
-                                        <div className="bg-white/10 rounded-full h-2 overflow-hidden">
-                                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Weak Chapters — real data, only shows once enough attempts exist */}
-                    {stats?.weak_chapters?.length > 0 && (
-                        <div>
-                            <p className="font-mono text-xs uppercase tracking-widest text-[#FF3B30] flex items-center gap-1.5 mb-3">
-                                <AlertTriangle className="w-3.5 h-3.5" />Weak Chapters
-                            </p>
-                            <div className="glass-card overflow-hidden border border-[#FF3B30]/20">
-                                {stats.weak_chapters.map((c, i) => (
-                                    <button key={i} onClick={() => nav(`/play/chapter?subject=${c.subject}&chapter=${encodeURIComponent(c.chapter)}`)}
-                                        className="w-full flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition text-left">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-bold text-sm truncate">{c.chapter}</div>
-                                            <div className="font-mono text-xs text-white/40 capitalize">{c.subject} · {c.attempted} attempts</div>
-                                        </div>
-                                        <span className="font-mono text-sm font-black text-[#FF3B30]">{c.accuracy}%</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    {/* Practice mode selection, subject progress, and weak chapters now live
+                        on the Practice tab (Play.jsx) — see BottomNav. Keeping Home focused
+                        on progress/overview instead of duplicating practice entry points. */}
 
                     {/* Recent History */}
                     {history.length > 0 && (
