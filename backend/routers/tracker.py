@@ -13,11 +13,11 @@ from deps import require_user
 router = APIRouter(prefix="/tracker", tags=["tracker"])
 
 DEFAULT_TASKS = [
-    {"id": "study_2hr", "label": "Studied at least 2 hours", "category": "study"},
-    {"id": "revise", "label": "Revised previous day's topics", "category": "revision"},
-    {"id": "pyq", "label": "Solved PYQs / practice questions", "category": "practice"},
-    {"id": "mistake_notebook", "label": "Updated Mistake Notebook", "category": "revision"},
-    {"id": "sleep_7hr", "label": "Slept 7+ hours", "category": "other"},
+    {"id": "study_2hr", "label": "Studied at least 2 hours", "category": "study", "start_time": "06:00", "duration_minutes": 120},
+    {"id": "revise", "label": "Revised previous day's topics", "category": "revision", "start_time": "18:00", "duration_minutes": 45},
+    {"id": "pyq", "label": "Solved PYQs / practice questions", "category": "practice", "start_time": "19:00", "duration_minutes": 60},
+    {"id": "mistake_notebook", "label": "Updated Mistake Notebook", "category": "revision", "start_time": "20:30", "duration_minutes": 30},
+    {"id": "sleep_7hr", "label": "Slept 7+ hours", "category": "other", "start_time": None, "duration_minutes": None},
 ]
 
 VALID_CATEGORIES = {"study", "practice", "revision", "test", "other"}
@@ -43,6 +43,8 @@ class TaskItem(BaseModel):
     id: str
     label: str
     category: Optional[str] = "study"
+    start_time: Optional[str] = None      # "HH:MM" 24-hour, local wall-clock time
+    duration_minutes: Optional[int] = None
 
 class TasksUpdate(BaseModel):
     tasks: List[TaskItem]
@@ -59,8 +61,18 @@ async def get_user_tasks(user_id: str):
         for t in tasks:
             if t.get("category") not in VALID_CATEGORIES:
                 t["category"] = "study"
+            t.setdefault("start_time", None)
+            t.setdefault("duration_minutes", None)
         return tasks
     return DEFAULT_TASKS
+
+
+def sort_by_time(tasks):
+    # Timed tasks first, in chronological order; untimed tasks after, unchanged order
+    timed = [t for t in tasks if t.get("start_time")]
+    untimed = [t for t in tasks if not t.get("start_time")]
+    timed.sort(key=lambda t: t["start_time"])
+    return timed + untimed
 
 
 # ─── Routes ───────────────────────────────────────────────
@@ -97,7 +109,7 @@ async def get_today(request: Request):
     entry = await db.tracker_daily.find_one({"user_id": user_id, "date": date})
     done_ids = set(entry["done_ids"]) if entry else set()
 
-    result_tasks = [{**t, "done": t["id"] in done_ids} for t in tasks]
+    result_tasks = sort_by_time([{**t, "done": t["id"] in done_ids} for t in tasks])
     score = len(done_ids)
     total = len(tasks)
 

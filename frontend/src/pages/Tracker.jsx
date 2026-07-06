@@ -27,6 +27,36 @@ const CATEGORY_LIST = ["study", "practice", "revision", "test", "other"];
 
 const GLOW_TEXT = { textShadow: "0 0 6px currentColor, 0 0 18px currentColor" };
 
+// ─── Time helpers ────────────────────────────────────────────────────────
+function formatTime12h(hhmm) {
+    if (!hhmm) return null;
+    const [h, m] = hhmm.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+function formatDuration(mins) {
+    if (!mins) return null;
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+// Returns "done" | "current" | "upcoming" | "missed" | null (no schedule)
+function getTaskTimeStatus(task) {
+    if (!task.start_time) return null;
+    if (task.done) return "done";
+    const now = new Date();
+    const [h, m] = task.start_time.split(":").map(Number);
+    const start = new Date(now); start.setHours(h, m, 0, 0);
+    const end = new Date(start.getTime() + (task.duration_minutes || 30) * 60000);
+    if (now < start) return "upcoming";
+    if (now >= start && now <= end) return "current";
+    return "missed";
+}
+
 // ─── Ambient glow decoration — the soft "medical tech" backdrop feel ────
 function OrbitGlow({ size = 110 }) {
     return (
@@ -101,11 +131,11 @@ export default function Tracker() {
         }
     };
 
-    const addQuickTask = async (label, category) => {
+    const addQuickTask = async (label, category, startTime, durationMinutes) => {
         try {
             const cur = await api.get("/tracker/tasks");
             const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 30) + "_" + Date.now().toString(36).slice(-4);
-            const tasks = [...cur.data.tasks, { id, label, category }];
+            const tasks = [...cur.data.tasks, { id, label, category, start_time: startTime, duration_minutes: durationMinutes }];
             await api.put("/tracker/tasks", { tasks });
             toast.success("Task added!");
             loadToday();
@@ -158,10 +188,15 @@ export default function Tracker() {
 // ─── TODAY VIEW ──────────────────────────────────────────────────────────
 function TodayView({ today, onToggle, onAdd }) {
     const pct = today.total ? (today.score / today.total) * 100 : 0;
+    const [filter, setFilter] = useState("all");
+
+    const counts = { all: today.tasks.length };
+    CATEGORY_LIST.forEach(c => { counts[c] = today.tasks.filter(t => t.category === c).length; });
+    const visibleTasks = filter === "all" ? today.tasks : today.tasks.filter(t => t.category === filter);
 
     return (
         <div className="fade-up">
-            <div className="glass-card p-5 mb-6 flex items-center justify-between relative overflow-hidden">
+            <div className="glass-card p-5 mb-4 flex items-center justify-between relative overflow-hidden">
                 <div>
                     <p className="font-bold text-lg" style={{ ...GLOW_TEXT, color: "#fff" }}>Today's Tasks</p>
                     <p className="text-sm text-white/40">{today.score}/{today.total} completed</p>
@@ -172,20 +207,47 @@ function TodayView({ today, onToggle, onAdd }) {
                 </div>
             </div>
 
+            <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
+                {["all", ...CATEGORY_LIST].map(c => (
+                    <button key={c} onClick={() => setFilter(c)}
+                        className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${
+                            filter === c ? "bg-[#00FF66] text-black" : "border border-white/10 text-white/50 hover:text-white/80"
+                        }`}>
+                        {c === "all" ? "All" : CATEGORY_LABEL[c]} ({counts[c] || 0})
+                    </button>
+                ))}
+            </div>
+
             <div className="space-y-2">
-                {today.tasks.map(task => {
+                {visibleTasks.map(task => {
                     const Icon = CATEGORY_ICON[task.category] || BookOpen;
+                    const timeStatus = getTaskTimeStatus(task);
+                    const isCurrent = timeStatus === "current";
+                    const isMissed = timeStatus === "missed";
                     return (
                         <button key={task.id} onClick={() => onToggle(task.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition ${
-                                task.done ? "border-[#00FF66]/40 bg-[#00FF66]/10" : "border-white/10 hover:border-white/20"
+                                task.done ? "border-[#00FF66]/40 bg-[#00FF66]/10"
+                                : isCurrent ? "border-[#00FF66]/60 bg-[#00FF66]/[0.06] shadow-[0_0_16px_rgba(0,255,102,0.15)]"
+                                : "border-white/10 hover:border-white/20"
                             }`}>
                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? "bg-[#00FF66]/20" : "bg-white/5"}`}>
                                 <Icon className={`w-4 h-4 ${task.done ? "text-[#00FF66]" : "text-white/50"}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className={`text-sm font-bold truncate ${task.done ? "text-white/50 line-through" : "text-white/90"}`}>{task.label}</div>
-                                <div className="text-xs text-white/35 font-mono uppercase tracking-wider">{CATEGORY_LABEL[task.category] || "Study"}</div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-sm font-bold truncate ${task.done ? "text-white/50 line-through" : "text-white/90"}`}>{task.label}</span>
+                                    {isCurrent && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#00FF66] text-black shrink-0">Now</span>}
+                                    {isMissed && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#FF3B30]/20 text-[#FF3B30] shrink-0">Missed</span>}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-white/35 font-mono">
+                                    <span className="uppercase tracking-wider">{CATEGORY_LABEL[task.category] || "Study"}</span>
+                                    {task.start_time && <>
+                                        <span>·</span>
+                                        <span>{formatTime12h(task.start_time)}</span>
+                                        {task.duration_minutes && <span className="text-white/25">({formatDuration(task.duration_minutes)})</span>}
+                                    </>}
+                                </div>
                             </div>
                             {task.done
                                 ? <CheckCircle2 className="w-5 h-5 text-[#00FF66] shrink-0" />
@@ -194,6 +256,9 @@ function TodayView({ today, onToggle, onAdd }) {
                         </button>
                     );
                 })}
+                {visibleTasks.length === 0 && (
+                    <p className="text-center text-white/30 text-sm py-8">No tasks in this category yet.</p>
+                )}
             </div>
 
             <QuickAddTask onAdd={onAdd} />
@@ -209,14 +274,18 @@ function TodayView({ today, onToggle, onAdd }) {
 function QuickAddTask({ onAdd }) {
     const [label, setLabel] = useState("");
     const [category, setCategory] = useState("study");
+    const [startTime, setStartTime] = useState("");
+    const [duration, setDuration] = useState(60);
     const [saving, setSaving] = useState(false);
 
     const submit = async () => {
         if (!label.trim()) return;
         setSaving(true);
-        await onAdd(label.trim(), category);
+        await onAdd(label.trim(), category, startTime || null, startTime ? Number(duration) : null);
         setLabel("");
         setCategory("study");
+        setStartTime("");
+        setDuration(60);
         setSaving(false);
     };
 
@@ -244,13 +313,20 @@ function QuickAddTask({ onAdd }) {
             </div>
 
             <div className="flex gap-2 mb-3">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#00FF66]/15 text-[#00FF66] border border-[#00FF66]/30">
-                    <Calendar className="w-3.5 h-3.5" />Today
-                </span>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/40 border border-white/10">
-                    <Clock className="w-3.5 h-3.5" />Any time
-                </span>
+                <label className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 focus-within:border-[#00FF66]/40">
+                    <Calendar className="w-3.5 h-3.5 text-[#00FF66] shrink-0" />
+                    <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
+                        className="bg-transparent outline-none text-white/80 w-full [color-scheme:dark]" />
+                </label>
+                <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 focus-within:border-[#00FF66]/40">
+                    <Clock className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                    <input type="number" min="5" step="5" value={duration} onChange={(e) => setDuration(e.target.value)}
+                        disabled={!startTime}
+                        className="bg-transparent outline-none text-white/80 w-12 disabled:opacity-30" />
+                    <span className="text-white/30">min</span>
+                </label>
             </div>
+            {!startTime && <p className="text-[11px] text-white/25 -mt-2 mb-3">No time set — task will appear as "Any time" at the end of the list.</p>}
 
             <button onClick={submit} disabled={saving || !label.trim()}
                 className="w-full py-2.5 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition disabled:opacity-40">
