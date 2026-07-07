@@ -4,8 +4,8 @@ from typing import List, Tuple
 
 
 # ─── SCORING CONSTANTS ──────────────────────────────────────────────
-XP_CORRECT_LIVE = 4   # Daily challenge / live quiz
-XP_CORRECT_NORMAL = 2  # PYQ / chapter / mock test
+XP_CORRECT_LIVE = 4    # Daily challenge / live quiz
+XP_CORRECT_NORMAL = 4  # PYQ / chapter / mock test — matches real NEET marking (+4/-1/0)
 XP_WRONG = -1          # Wrong answer (same as NEET)
 XP_UNATTEMPTED = 0     # No negative for skipped
 CHAPTER_BONUS = 10     # Complete a chapter
@@ -15,7 +15,8 @@ DAILY_BONUS = 10       # Complete daily challenge
 def base_xp(correct: int, wrong: int, mode: str = "normal") -> int:
     """Calculate XP based on mode.
     - live/daily_quiz: +4 per correct, -1 per wrong
-    - normal (pyq/chapter/mock): +2 per correct, -1 per wrong
+    - normal (pyq/chapter/mock): +4 per correct, -1 per wrong
+    Matches real NEET marking scheme across all modes.
     """
     per_correct = XP_CORRECT_LIVE if mode in ("daily_quiz", "live") else XP_CORRECT_NORMAL
     return max(0, (correct * per_correct) + (wrong * XP_WRONG))
