@@ -1,5 +1,7 @@
 import uuid
-from fastapi import APIRouter, Request
+import random
+from fastapi import APIRouter, Request, HTTPException
+from pydantic import BaseModel
 from datetime import datetime, timezone
 
 from database import db
@@ -180,3 +182,121 @@ async def dismiss_mistake(mistake_id: str, request: Request):
         {"$set": {"resolved": True}}
     )
     return {"ok": res.matched_count > 0}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# PRACTICE MODE HELPERS — immediate feedback, hints, bookmarks, notes, reports
+# (Mock Test never calls /quiz/check, so it stays a blind exam simulation)
+# ════════════════════════════════════════════════════════════════════════════
+
+class CheckAnswerRequest(BaseModel):
+    question_id: str
+    selected_option: int
+
+
+@router.post("/quiz/check")
+async def check_answer(payload: CheckAnswerRequest, request: Request):
+    """Immediate right/wrong feedback — used by practice modes only, never Mock Test."""
+    await require_user(request)
+    doc = await db.questions.find_one({"question_id": payload.question_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Question not found")
+    is_correct = payload.selected_option == doc["correct"]
+    return {
+        "is_correct": is_correct,
+        "correct_option": doc["correct"],
+        "explanation": doc.get("explanation", ""),
+    }
+
+
+class HintRequest(BaseModel):
+    question_id: str
+
+
+@router.post("/quiz/hint")
+async def get_hint(payload: HintRequest, request: Request):
+    """50-50 style hint: eliminates two wrong options. Costs 1 XP."""
+    user = await require_user(request)
+    doc = await db.questions.find_one({"question_id": payload.question_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    correct_idx = doc["correct"]
+    all_options = list(range(len(doc.get("options", []))))
+    wrong_options = [i for i in all_options if i != correct_idx]
+    keep_wrong = random.choice(wrong_options) if wrong_options else None
+    eliminate = [i for i in wrong_options if i != keep_wrong]
+
+    new_xp = max(0, user.total_xp - 1)
+    await db.users.update_one({"user_id": user.user_id}, {"$set": {"total_xp": new_xp}})
+
+    return {"eliminate": eliminate, "xp_deducted": 1, "new_total_xp": new_xp}
+
+
+class BookmarkToggle(BaseModel):
+    question_id: str
+
+
+@router.post("/quiz/bookmark")
+async def toggle_bookmark(payload: BookmarkToggle, request: Request):
+    user = await require_user(request)
+    existing = await db.bookmarks.find_one({"user_id": user.user_id, "question_id": payload.question_id})
+    if existing:
+        await db.bookmarks.delete_one({"_id": existing["_id"]})
+        return {"bookmarked": False}
+    await db.bookmarks.insert_one({
+        "user_id": user.user_id,
+        "question_id": payload.question_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"bookmarked": True}
+
+
+@router.get("/quiz/bookmarks")
+async def list_bookmarks(request: Request):
+    user = await require_user(request)
+    rows = await db.bookmarks.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    qids = [r["question_id"] for r in rows]
+    questions = await db.questions.find({"question_id": {"$in": qids}}, {"_id": 0}).to_list(500)
+    return {"bookmarks": questions}
+
+
+class NoteBody(BaseModel):
+    text: str
+
+
+@router.get("/quiz/notes/{question_id}")
+async def get_note(question_id: str, request: Request):
+    user = await require_user(request)
+    doc = await db.question_notes.find_one({"user_id": user.user_id, "question_id": question_id}, {"_id": 0})
+    return {"text": doc["text"] if doc else ""}
+
+
+@router.put("/quiz/notes/{question_id}")
+async def save_note(question_id: str, payload: NoteBody, request: Request):
+    user = await require_user(request)
+    await db.question_notes.update_one(
+        {"user_id": user.user_id, "question_id": question_id},
+        {"$set": {"text": payload.text, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+class ReportBody(BaseModel):
+    question_id: str
+    reason: str
+
+
+@router.post("/quiz/report")
+async def report_question(payload: ReportBody, request: Request):
+    user = await require_user(request)
+    await db.question_reports.insert_one({
+        "report_id": f"r_{uuid.uuid4().hex[:12]}",
+        "user_id": user.user_id,
+        "question_id": payload.question_id,
+        "reason": payload.reason,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "resolved": False,
+    })
+    return {"ok": True}

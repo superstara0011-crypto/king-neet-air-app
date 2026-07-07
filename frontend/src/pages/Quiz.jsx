@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, SUBJECT_COLORS, SUBJECT_LABEL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Loader2, X, Clock, ZoomIn, Flag, ChevronLeft, ChevronRight, List } from "lucide-react";
+import { Loader2, X, Clock, ZoomIn, Flag, ChevronLeft, ChevronRight, List, Lightbulb, Bookmark, StickyNote, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Circular countdown ring (mock_test only) ───────────────────────────
@@ -55,6 +55,19 @@ export default function Quiz() {
     const [imageZoomed, setImageZoomed] = useState(false);
     const [navigatorOpen, setNavigatorOpen] = useState(false);
 
+    // Practice-mode helpers (never used in mock_test)
+    const [checkResult, setCheckResult] = useState(null); // { is_correct, correct_option, explanation }
+    const [checking, setChecking] = useState(false);
+    const [hintEliminated, setHintEliminated] = useState([]);
+    const [hintLoading, setHintLoading] = useState(false);
+    const [bookmarked, setBookmarked] = useState(() => new Set());
+    const [noteOpen, setNoteOpen] = useState(false);
+    const [noteText, setNoteText] = useState("");
+    const [noteSaving, setNoteSaving] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
+    const [reportReason, setReportReason] = useState("");
+    const [reportSubmitting, setReportSubmitting] = useState(false);
+
     const answersMapRef = useRef({});
     const submittedRef = useRef(false);
     const timeSpentRef = useRef({});
@@ -94,6 +107,11 @@ export default function Quiz() {
         enteredAtRef.current = Date.now();
         prevIdxRef.current = idx;
         setVisited(v => new Set(v).add(idx));
+        setCheckResult(null);
+        setHintEliminated([]);
+        setNoteOpen(false);
+        setReportOpen(false);
+        setReportReason("");
     }, [idx]);
 
     const submitQuiz = async () => {
@@ -142,10 +160,94 @@ export default function Quiz() {
     const progress = (idx / questions.length) * 100;
     const answeredCount = Object.keys(answersMap).length;
 
-    const selectOption = (i) => {
+    const isPractice = mode !== "mock_test";
+
+    const selectOption = async (i) => {
+        if (isPractice && checkResult) return; // locked after checking, until Next
         const next = { ...answersMapRef.current, [idx]: i };
         answersMapRef.current = next;
         setAnswersMap(next);
+
+        if (isPractice) {
+            setChecking(true);
+            try {
+                const r = await api.post("/quiz/check", { question_id: q.id, selected_option: i });
+                setCheckResult(r.data);
+            } catch {
+                // fail silently — feedback is a nice-to-have, shouldn't block the quiz
+            } finally {
+                setChecking(false);
+            }
+        }
+    };
+
+    const handleHint = async () => {
+        if (hintEliminated.length > 0 || hintLoading) return;
+        setHintLoading(true);
+        try {
+            const r = await api.post("/quiz/hint", { question_id: q.id });
+            setHintEliminated(r.data.eliminate || []);
+            toast.success(`-1 XP · Two options eliminated`);
+        } catch {
+            toast.error("Couldn't fetch hint");
+        } finally {
+            setHintLoading(false);
+        }
+    };
+
+    const handleBookmark = async () => {
+        try {
+            const r = await api.post("/quiz/bookmark", { question_id: q.id });
+            setBookmarked(b => {
+                const next = new Set(b);
+                if (r.data.bookmarked) next.add(q.id); else next.delete(q.id);
+                return next;
+            });
+            toast.success(r.data.bookmarked ? "Bookmarked" : "Bookmark removed");
+        } catch {
+            toast.error("Couldn't update bookmark");
+        }
+    };
+
+    const openNote = async () => {
+        const opening = !noteOpen;
+        setNoteOpen(opening);
+        if (opening) {
+            try {
+                const r = await api.get(`/quiz/notes/${q.id}`);
+                setNoteText(r.data?.text || "");
+            } catch {
+                setNoteText("");
+            }
+        }
+    };
+
+    const saveNote = async () => {
+        setNoteSaving(true);
+        try {
+            await api.put(`/quiz/notes/${q.id}`, { text: noteText });
+            toast.success("Note saved");
+            setNoteOpen(false);
+        } catch {
+            toast.error("Couldn't save note");
+        } finally {
+            setNoteSaving(false);
+        }
+    };
+
+    const submitReport = async () => {
+        if (!reportReason.trim()) return;
+        setReportSubmitting(true);
+        try {
+            await api.post("/quiz/report", { question_id: q.id, reason: reportReason.trim() });
+            toast.success("Reported — thanks for flagging it");
+            setReportOpen(false);
+            setReportReason("");
+        } catch {
+            toast.error("Couldn't submit report");
+        } finally {
+            setReportSubmitting(false);
+        }
     };
 
     const goTo = (newIdx) => {
@@ -260,19 +362,84 @@ export default function Quiz() {
                 )}
 
                 <div className="space-y-3">
-                    {q.options.map((opt, i) => (
-                        <button
-                            key={i}
-                            onClick={() => selectOption(i)}
-                            disabled={submitting}
-                            className={`opt-btn ${selected === i ? "selected" : ""}`}
-                            data-testid={`quiz-option-${i}`}
-                        >
-                            <span className="font-mono font-bold text-[#00FF66] mr-3">{String.fromCharCode(65 + i)}.</span>
-                            {opt}
-                        </button>
-                    ))}
+                    {q.options.map((opt, i) => {
+                        const eliminated = hintEliminated.includes(i);
+                        let extraCls = "";
+                        if (checkResult) {
+                            if (i === checkResult.correct_option) extraCls = "border-[#00FF66] bg-[#00FF66]/10 text-[#00FF66]";
+                            else if (i === selected && !checkResult.is_correct) extraCls = "border-[#FF3B30] bg-[#FF3B30]/10 text-[#FF3B30]";
+                        }
+                        return (
+                            <button
+                                key={i}
+                                onClick={() => !eliminated && selectOption(i)}
+                                disabled={submitting || checking || eliminated || (isPractice && !!checkResult)}
+                                className={`opt-btn ${selected === i ? "selected" : ""} ${extraCls} ${eliminated ? "opacity-30 line-through" : ""}`}
+                                data-testid={`quiz-option-${i}`}
+                            >
+                                <span className="font-mono font-bold text-[#00FF66] mr-3">{String.fromCharCode(65 + i)}.</span>
+                                {opt}
+                                {checkResult && i === checkResult.correct_option && <CheckCircle2 className="w-4 h-4 inline ml-2 text-[#00FF66]" />}
+                                {checkResult && i === selected && !checkResult.is_correct && <XCircle className="w-4 h-4 inline ml-2 text-[#FF3B30]" />}
+                            </button>
+                        );
+                    })}
                 </div>
+
+                {checkResult?.explanation && (
+                    <div className="mt-4 bg-white/5 rounded-lg p-3 text-sm text-white/60 leading-relaxed">
+                        💡 {checkResult.explanation}
+                    </div>
+                )}
+
+                {isPractice && (
+                    <div className="flex items-center gap-2 flex-wrap mt-5 pt-5 border-t border-white/10">
+                        <button onClick={handleHint} disabled={hintLoading || hintEliminated.length > 0}
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#FFD700]/10 transition disabled:opacity-40">
+                            <Lightbulb className="w-3.5 h-3.5" />Hint <span className="text-white/40">-1 XP</span>
+                        </button>
+                        <button onClick={handleBookmark}
+                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border transition ${
+                                bookmarked.has(q.id) ? "border-[#00F0FF]/50 text-[#00F0FF] bg-[#00F0FF]/10" : "border-white/15 text-white/50 hover:text-white/80"
+                            }`}>
+                            <Bookmark className="w-3.5 h-3.5" />{bookmarked.has(q.id) ? "Bookmarked" : "Bookmark"}
+                        </button>
+                        <button onClick={openNote}
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-white/15 text-white/50 hover:text-white/80 transition">
+                            <StickyNote className="w-3.5 h-3.5" />Add Note
+                        </button>
+                        <button onClick={() => setReportOpen(o => !o)}
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#FF3B30]/30 text-[#FF3B30] hover:bg-[#FF3B30]/10 transition ml-auto">
+                            <AlertTriangle className="w-3.5 h-3.5" />Report Error
+                        </button>
+                    </div>
+                )}
+
+                {noteOpen && (
+                    <div className="mt-3">
+                        <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="Write a note for this question..."
+                            rows={3}
+                            className="w-full bg-black/30 border border-white/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00FF66]" />
+                        <button onClick={saveNote} disabled={noteSaving}
+                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#00FF66] text-black disabled:opacity-50">
+                            {noteSaving ? "Saving..." : "Save Note"}
+                        </button>
+                    </div>
+                )}
+
+                {reportOpen && (
+                    <div className="mt-3">
+                        <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)}
+                            placeholder="What's wrong with this question? (e.g. wrong answer, typo, unclear)"
+                            rows={2}
+                            className="w-full bg-black/30 border border-[#FF3B30]/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF3B30]" />
+                        <button onClick={submitReport} disabled={reportSubmitting || !reportReason.trim()}
+                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#FF3B30] text-white disabled:opacity-50">
+                            {reportSubmitting ? "Submitting..." : "Submit Report"}
+                        </button>
+                    </div>
+                )}
 
                 <div className="flex items-center justify-between mt-8">
                     <button
