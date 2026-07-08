@@ -13,7 +13,7 @@ function CountdownRing({ timeLeft, totalTime, size = 56 }) {
     const pct = totalTime ? Math.max(0, Math.min(1, timeLeft / totalTime)) : 0;
     const offset = circumference - pct * circumference;
     const low = totalTime && timeLeft <= 30;
-    const color = low ? "#FF3B30" : "#00FF66";
+    const color = low ? "#C97064" : "#D8A7A0";
     const mins = Math.floor(timeLeft / 60);
     const secs = timeLeft % 60;
 
@@ -149,14 +149,14 @@ export default function Quiz() {
     if (loading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-[#00FF66] animate-spin" />
+                <Loader2 className="w-8 h-8 text-[#D8A7A0] animate-spin" />
             </div>
         );
     }
 
     if (questions.length === 0) return null;
     const q = questions[idx];
-    const subjColor = SUBJECT_COLORS[q.subject] || "#00FF66";
+    const subjColor = SUBJECT_COLORS[q.subject] || "#D8A7A0";
     const progress = (idx / questions.length) * 100;
     const answeredCount = Object.keys(answersMap).length;
 
@@ -296,7 +296,7 @@ export default function Quiz() {
                     </span>
                     <span className="font-mono text-xs uppercase tracking-widest text-white/50 shrink-0">{mode.replace("_", " ")}</span>
                     {q.is_pyq && q.year && (
-                        <span className="font-mono text-xs text-[#FFD700] shrink-0">PYQ {q.year}</span>
+                        <span className="font-mono text-xs text-[#D4A574] shrink-0">PYQ {q.year}</span>
                     )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -320,7 +320,7 @@ export default function Quiz() {
                     <span>{Math.round(progress)}%</span>
                 </div>
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#00FF66] transition-all duration-500" style={{ width: `${progress}%`, boxShadow: "0 0 10px rgba(0,255,102,0.6)" }} />
+                    <div className="h-full bg-[#D8A7A0] transition-all duration-500" style={{ width: `${progress}%`, boxShadow: "0 0 10px rgba(216,167,160,0.6)" }} />
                 </div>
             </div>
 
@@ -329,7 +329,7 @@ export default function Quiz() {
                     <p className="font-mono text-xs uppercase tracking-widest text-white/40">Chapter · {q.chapter}</p>
                     <button onClick={toggleMark}
                         className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border transition ${
-                            marked.has(idx) ? "text-[#FFA500] border-[#FFA500]/50 bg-[#FFA500]/10" : "text-white/40 border-white/15 hover:text-white/70"
+                            marked.has(idx) ? "text-[#D4A574] border-[#D4A574]/50 bg-[#D4A574]/10" : "text-white/40 border-white/15 hover:text-white/70"
                         }`}>
                         <Flag className="w-3.5 h-3.5" />
                         {marked.has(idx) ? "Marked" : "Mark for review"}
@@ -366,8 +366,8 @@ export default function Quiz() {
                         const eliminated = hintEliminated.includes(i);
                         let extraCls = "";
                         if (checkResult) {
-                            if (i === checkResult.correct_option) extraCls = "border-[#00FF66] bg-[#00FF66]/10 text-[#00FF66]";
-                            else if (i === selected && !checkResult.is_correct) extraCls = "border-[#FF3B30] bg-[#FF3B30]/10 text-[#FF3B30]";
+                            if (i === checkResult.correct_option) extraCls = "border-[#9CAF88] bg-[#9CAF88]/10 text-[#9CAF88]";
+                            else if (i === selected && !checkResult.is_correct) extraCls = "border-[#C97064] bg-[#C97064]/10 text-[#C97064]";
                         }
                         return (
                             <button
@@ -377,10 +377,10 @@ export default function Quiz() {
                                 className={`opt-btn ${selected === i ? "selected" : ""} ${extraCls} ${eliminated ? "opacity-30 line-through" : ""}`}
                                 data-testid={`quiz-option-${i}`}
                             >
-                                <span className="font-mono font-bold text-[#00FF66] mr-3">{String.fromCharCode(65 + i)}.</span>
+                                <span className="font-mono font-bold text-[#D8A7A0] mr-3">{String.fromCharCode(65 + i)}.</span>
                                 {opt}
-                                {checkResult && i === checkResult.correct_option && <CheckCircle2 className="w-4 h-4 inline ml-2 text-[#00FF66]" />}
-                                {checkResult && i === selected && !checkResult.is_correct && <XCircle className="w-4 h-4 inline ml-2 text-[#FF3B30]" />}
+                                {checkResult && i === checkResult.correct_option && <CheckCircle2 className="w-4 h-4 inline ml-2 text-[#9CAF88]" />}
+                                {checkResult && i === selected && !checkResult.is_correct && <XCircle className="w-4 h-4 inline ml-2 text-[#C97064]" />}
                             </button>
                         );
                     })}
@@ -395,12 +395,12 @@ export default function Quiz() {
                 {isPractice && (
                     <div className="flex items-center gap-2 flex-wrap mt-5 pt-5 border-t border-white/10">
                         <button onClick={handleHint} disabled={hintLoading || hintEliminated.length > 0}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#FFD700]/30 text-[#FFD700] hover:bg-[#FFD700]/10 transition disabled:opacity-40">
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#D4A574]/30 text-[#D4A574] hover:bg-[#D4A574]/10 transition disabled:opacity-40">
                             <Lightbulb className="w-3.5 h-3.5" />Hint <span className="text-white/40">-1 XP</span>
                         </button>
                         <button onClick={handleBookmark}
                             className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border transition ${
-                                bookmarked.has(q.id) ? "border-[#00F0FF]/50 text-[#00F0FF] bg-[#00F0FF]/10" : "border-white/15 text-white/50 hover:text-white/80"
+                                bookmarked.has(q.id) ? "border-[#A8C0C9]/50 text-[#A8C0C9] bg-[#A8C0C9]/10" : "border-white/15 text-white/50 hover:text-white/80"
                             }`}>
                             <Bookmark className="w-3.5 h-3.5" />{bookmarked.has(q.id) ? "Bookmarked" : "Bookmark"}
                         </button>
@@ -409,7 +409,7 @@ export default function Quiz() {
                             <StickyNote className="w-3.5 h-3.5" />Add Note
                         </button>
                         <button onClick={() => setReportOpen(o => !o)}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#FF3B30]/30 text-[#FF3B30] hover:bg-[#FF3B30]/10 transition ml-auto">
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#C97064]/30 text-[#C97064] hover:bg-[#C97064]/10 transition ml-auto">
                             <AlertTriangle className="w-3.5 h-3.5" />Report Error
                         </button>
                     </div>
@@ -420,9 +420,9 @@ export default function Quiz() {
                         <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)}
                             placeholder="Write a note for this question..."
                             rows={3}
-                            className="w-full bg-black/30 border border-white/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00FF66]" />
+                            className="w-full bg-black/30 border border-white/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D8A7A0]" />
                         <button onClick={saveNote} disabled={noteSaving}
-                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#00FF66] text-black disabled:opacity-50">
+                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#D8A7A0] text-black disabled:opacity-50">
                             {noteSaving ? "Saving..." : "Save Note"}
                         </button>
                     </div>
@@ -433,9 +433,9 @@ export default function Quiz() {
                         <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)}
                             placeholder="What's wrong with this question? (e.g. wrong answer, typo, unclear)"
                             rows={2}
-                            className="w-full bg-black/30 border border-[#FF3B30]/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF3B30]" />
+                            className="w-full bg-black/30 border border-[#C97064]/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C97064]" />
                         <button onClick={submitReport} disabled={reportSubmitting || !reportReason.trim()}
-                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#FF3B30] text-white disabled:opacity-50">
+                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#C97064] text-white disabled:opacity-50">
                             {reportSubmitting ? "Submitting..." : "Submit Report"}
                         </button>
                     </div>
@@ -464,7 +464,7 @@ export default function Quiz() {
             {navigatorOpen && (
                 <div className="fixed inset-0 z-[90] flex items-end" onClick={() => setNavigatorOpen(false)}>
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                    <div className="relative w-full max-w-3xl mx-auto bg-[#0a0f0a] border-t border-[#00FF66]/20 rounded-t-3xl p-5 max-h-[75vh] overflow-y-auto"
+                    <div className="relative w-full max-w-3xl mx-auto bg-[#0a0f0a] border-t border-[#D8A7A0]/20 rounded-t-3xl p-5 max-h-[75vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}>
                         <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
                         <p className="font-bold text-sm mb-4">Questions</p>
@@ -472,9 +472,9 @@ export default function Quiz() {
                             {questions.map((_, i) => {
                                 const status = questionStatus(i);
                                 const styles = {
-                                    current: "border-2 border-[#00FF66] text-white bg-[#00FF66]/10",
-                                    answered: "bg-[#00FF66] text-black border-transparent",
-                                    marked: "bg-[#FFA500]/20 text-[#FFA500] border border-[#FFA500]/50",
+                                    current: "border-2 border-[#D8A7A0] text-white bg-[#D8A7A0]/10",
+                                    answered: "bg-[#D8A7A0] text-black border-transparent",
+                                    marked: "bg-[#D4A574]/20 text-[#D4A574] border border-[#D4A574]/50",
                                     visited: "bg-white/5 text-white/50 border border-white/10",
                                     unvisited: "bg-transparent text-white/30 border border-white/10",
                                 };
@@ -487,8 +487,8 @@ export default function Quiz() {
                             })}
                         </div>
                         <div className="flex items-center flex-wrap gap-3 text-[11px] text-white/50">
-                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#00FF66]" />Answered</span>
-                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#FFA500]/30 border border-[#FFA500]/50" />Marked</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#D8A7A0]" />Answered</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#D4A574]/30 border border-[#D4A574]/50" />Marked</span>
                             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white/5 border border-white/10" />Visited</span>
                             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-white/10" />Not Visited</span>
                         </div>

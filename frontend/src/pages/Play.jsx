@@ -4,9 +4,9 @@ import { api } from "@/lib/api";
 import { Trophy, Calendar, Clock, Crown, Atom, FlaskConical, Leaf, Layers, BookOpen, ChevronRight, AlertTriangle } from "lucide-react";
 
 const SUBJECT_META = {
-    biology:   { name: "Biology",   icon: "🧬", color: "#00FF66", path: "/play/chapter?subject=biology" },
-    physics:   { name: "Physics",   icon: "⚛️", color: "#00F0FF", path: "/play/chapter?subject=physics" },
-    chemistry: { name: "Chemistry", icon: "🧪", color: "#B900FF", path: "/play/chapter?subject=chemistry" },
+    biology:   { name: "Biology",   icon: "🧬", color: "#D8A7A0", path: "/play/chapter?subject=biology" },
+    physics:   { name: "Physics",   icon: "⚛️", color: "#A8C0C9", path: "/play/chapter?subject=physics" },
+    chemistry: { name: "Chemistry", icon: "🧪", color: "#B399C9", path: "/play/chapter?subject=chemistry" },
 };
 
 export default function Play() {
@@ -18,16 +18,16 @@ export default function Play() {
     }, []);
 
     const modes = [
-        { id: "pyq", title: "PYQ Practice", desc: "Real previous year NEET MCQs · pick a subject", icon: <Trophy className="w-7 h-7" />, color: "#00FF66" },
-        { id: "chapter", title: "Chapter Practice", desc: "Drill a single chapter of any subject", icon: <BookOpen className="w-7 h-7" />, color: "#FFD700" },
-        { id: "daily_quiz", title: "Daily Quiz", desc: "10 mixed questions · +10 XP daily bonus", icon: <Calendar className="w-7 h-7" />, color: "#00F0FF" },
-        { id: "mock_test", title: "Mock Test", desc: "25 mixed questions · timed (1 min/Q)", icon: <Clock className="w-7 h-7" />, color: "#B900FF" },
+        { id: "pyq", title: "PYQ Practice", desc: "Real previous year NEET MCQs · pick a subject", icon: <Trophy className="w-7 h-7" />, color: "#D8A7A0" },
+        { id: "chapter", title: "Chapter Practice", desc: "Drill a single chapter of any subject", icon: <BookOpen className="w-7 h-7" />, color: "#D4A574" },
+        { id: "daily_quiz", title: "Daily Quiz", desc: "10 mixed questions · +10 XP daily bonus", icon: <Calendar className="w-7 h-7" />, color: "#A8C0C9" },
+        { id: "mock_test", title: "Mock Test", desc: "25 mixed questions · timed (1 min/Q)", icon: <Clock className="w-7 h-7" />, color: "#B399C9" },
     ];
 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 lg:py-16">
             <div className="fade-up">
-                <p className="font-mono uppercase tracking-widest text-xs text-[#00FF66] mb-2">Practice Hub</p>
+                <p className="font-mono uppercase tracking-widest text-xs text-[#D8A7A0] mb-2">Practice Hub</p>
                 <h1 className="font-heading text-4xl sm:text-5xl font-black mb-3">Pick your battle.</h1>
                 <p className="text-[#A1BBA1] text-lg mb-10">Three modes. One goal: <span className="text-white">crack NEET</span>.</p>
             </div>
@@ -88,10 +88,10 @@ export default function Play() {
             {/* Weak Chapters — real data, only shows once enough attempts exist */}
             {stats?.weak_chapters?.length > 0 && (
                 <div className="mt-10">
-                    <p className="font-mono text-xs uppercase tracking-widest text-[#FF3B30] flex items-center gap-1.5 mb-3">
+                    <p className="font-mono text-xs uppercase tracking-widest text-[#C97064] flex items-center gap-1.5 mb-3">
                         <AlertTriangle className="w-3.5 h-3.5" />Weak Chapters
                     </p>
-                    <div className="glass-card overflow-hidden border border-[#FF3B30]/20">
+                    <div className="glass-card overflow-hidden border border-[#C97064]/20">
                         {stats.weak_chapters.map((c, i) => (
                             <button key={i} onClick={() => nav(`/play/chapter?subject=${c.subject}&chapter=${encodeURIComponent(c.chapter)}`)}
                                 className="w-full flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition text-left">
@@ -99,7 +99,7 @@ export default function Play() {
                                     <div className="font-bold text-sm truncate">{c.chapter}</div>
                                     <div className="font-mono text-xs text-white/40 capitalize">{c.subject} · {c.attempted} attempts</div>
                                 </div>
-                                <span className="font-mono text-sm font-black text-[#FF3B30]">{c.accuracy}%</span>
+                                <span className="font-mono text-sm font-black text-[#C97064]">{c.accuracy}%</span>
                             </button>
                         ))}
                     </div>

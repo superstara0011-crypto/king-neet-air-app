@@ -24,8 +24,14 @@ import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
 function Protected({ children }) {
     const { user, loading } = useAuth();
     if (loading) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full border-4 border-[#00FF66]/30 border-t-[#00FF66] animate-spin" />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#050805] gap-6 px-6">
+            <img src="/icon-256.png" alt="King NEET AIR" className="w-24 h-24 rounded-3xl animate-pulse" />
+            <div className="text-center">
+                <p className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
+                    Focused. Disciplined. <span className="text-[#D8A7A0]">AIR</span> Ready.
+                </p>
+            </div>
+            <div className="w-8 h-8 rounded-full border-4 border-[#D8A7A0]/30 border-t-[#D8A7A0] animate-spin" />
         </div>
     );
     if (!user) return <Navigate to="/" replace />;
@@ -79,7 +85,7 @@ function App() {
                     toastOptions={{
                         style: {
                             background: "#0a110a",
-                            border: "1px solid rgba(0,255,102,0.3)",
+                            border: "1px solid rgba(216,167,160,0.3)",
                             color: "#fff",
                             fontFamily: "Outfit, sans-serif",
                         },

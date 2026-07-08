@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { Loader2, Brain, X, CheckCircle2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
-const SUBJECT_COLORS = { biology: "#00FF66", physics: "#00F0FF", chemistry: "#B900FF" };
+const SUBJECT_COLORS = { biology: "#D8A7A0", physics: "#A8C0C9", chemistry: "#B399C9" };
 
 export default function Mistakes() {
     const [data, setData] = useState(null);
@@ -27,16 +27,16 @@ export default function Mistakes() {
     };
 
     if (!data) return (
-        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#00FF66] animate-spin" /></div>
+        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#D8A7A0] animate-spin" /></div>
     );
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
             <div className="mb-6 fade-up">
-                <p className="font-mono uppercase tracking-widest text-xs text-[#B900FF] mb-2 flex items-center gap-1.5">
+                <p className="font-mono uppercase tracking-widest text-xs text-[#D8A7A0] mb-2 flex items-center gap-1.5">
                     <Brain className="w-3.5 h-3.5" />Mistake Notebook
                 </p>
-                <h1 className="font-heading text-3xl sm:text-4xl font-black">Learn from your <span className="text-[#B900FF]">mistakes</span></h1>
+                <h1 className="font-heading text-3xl sm:text-4xl font-black">Learn from your <span className="text-[#D8A7A0]">mistakes</span></h1>
                 <p className="text-white/50 mt-2">Wrong answers are saved here automatically. Retry the topic to clear them.</p>
             </div>
 
@@ -44,7 +44,7 @@ export default function Mistakes() {
                 {["all", "biology", "physics", "chemistry"].map(s => (
                     <button key={s} onClick={() => setFilter(s)}
                         className={`px-3 py-1.5 text-xs uppercase tracking-widest font-bold rounded-lg transition ${
-                            filter === s ? "bg-[#B900FF] text-white" : "border border-[#B900FF]/30 text-white/60 hover:text-white"
+                            filter === s ? "bg-[#D8A7A0] text-white" : "border border-[#D8A7A0]/30 text-white/60 hover:text-white"
                         }`}>
                         {s} {s !== "all" && data.counts?.[s] > 0 ? `(${data.counts[s]})` : ""}
                     </button>
@@ -53,7 +53,7 @@ export default function Mistakes() {
 
             {data.mistakes.length === 0 ? (
                 <div className="glass-card p-12 text-center">
-                    <CheckCircle2 className="w-10 h-10 text-[#00FF66] mx-auto mb-3" />
+                    <CheckCircle2 className="w-10 h-10 text-[#9CAF88] mx-auto mb-3" />
                     <p className="text-white/50 font-mono">No mistakes here — great job! 🎯</p>
                 </div>
             ) : (
@@ -69,7 +69,7 @@ export default function Mistakes() {
                                     <span className="text-xs text-white/40 flex items-center gap-1"><BookOpen className="w-3 h-3" />{m.chapter}</span>
                                 </div>
                                 <button onClick={() => dismiss(m.mistake_id)} title="Mark as reviewed"
-                                    className="text-white/30 hover:text-[#00FF66] transition">
+                                    className="text-white/30 hover:text-[#9CAF88] transition">
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
@@ -83,8 +83,8 @@ export default function Mistakes() {
                             <div className="space-y-2 mb-3">
                                 {m.options.map((opt, i) => (
                                     <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
-                                        i === m.correct ? "border-[#00FF66] bg-[#00FF66]/10 text-[#00FF66]"
-                                        : i === m.selected ? "border-[#FF3B30] bg-[#FF3B30]/10 text-[#FF3B30]"
+                                        i === m.correct ? "border-[#9CAF88] bg-[#9CAF88]/10 text-[#9CAF88]"
+                                        : i === m.selected ? "border-[#C97064] bg-[#C97064]/10 text-[#C97064]"
                                         : "border-white/10 text-white/50"
                                     }`}>
                                         <span className="font-mono text-xs mr-2 opacity-60">{String.fromCharCode(65 + i)}.</span>
