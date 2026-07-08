@@ -71,15 +71,15 @@ function OrbitGlow({ size = 110 }) {
     return (
         <div className="absolute -z-10 pointer-events-none" aria-hidden="true"
             style={{ top: "50%", left: "50%", width: size, height: size, transform: "translate(-50%,-50%)" }}>
-            <div className="absolute inset-0 rounded-full bg-[#00FF66]/25 blur-2xl" />
-            <div className="absolute inset-0 rounded-full border border-[#00FF66]/25 border-dashed animate-spin [animation-duration:18s]" />
-            <div className="absolute inset-3 rounded-full border border-[#00FF66]/10 animate-spin [animation-duration:12s] [animation-direction:reverse]" />
+            <div className="absolute inset-0 rounded-full bg-[#00A3FF]/25 blur-2xl" />
+            <div className="absolute inset-0 rounded-full border border-[#00A3FF]/25 border-dashed animate-spin [animation-duration:18s]" />
+            <div className="absolute inset-3 rounded-full border border-[#00A3FF]/10 animate-spin [animation-duration:12s] [animation-direction:reverse]" />
         </div>
     );
 }
 
 // ─── Circular progress ring ─────────────────────────────────────────────
-function ProgressRing({ percent, size = 56, stroke = 5, color = "#00FF66" }) {
+function ProgressRing({ percent, size = 56, stroke = 5, color = "#00A3FF" }) {
     const radius = (size - stroke) / 2;
     const circumference = 2 * Math.PI * radius;
     const clamped = Math.max(0, Math.min(100, percent));
@@ -182,14 +182,14 @@ export default function Tracker() {
     };
 
     if (!today) return (
-        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#00FF66] animate-spin" /></div>
+        <div className="py-24 flex justify-center"><Loader2 className="w-8 h-8 text-[#00A3FF] animate-spin" /></div>
     );
 
     return (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
             <div className="flex items-center justify-between mb-6 fade-up">
                 <div>
-                    <p className="font-mono uppercase tracking-widest text-xs text-[#00FF66] mb-2">Study Tracker</p>
+                    <p className="font-mono uppercase tracking-widest text-xs text-[#00A3FF] mb-2">Study Tracker</p>
                     <h1 className="font-heading text-3xl sm:text-4xl font-black" style={{ color: "#fff", textShadow: "0 0 10px rgba(0,255,102,0.5), 0 0 24px rgba(0,255,102,0.3)" }}>Task Tracker</h1>
                 </div>
                 <div className="flex gap-2 flex-wrap">
@@ -201,7 +201,7 @@ export default function Tracker() {
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setView(tab.id)}
                             className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
-                                view === tab.id ? "bg-[#00FF66] text-black" : "border border-[#00FF66]/30 text-white/60 hover:text-white"
+                                view === tab.id ? "bg-[#00A3FF] text-black" : "border border-[#00A3FF]/30 text-white/60 hover:text-white"
                             }`}>
                             {tab.label}
                         </button>
@@ -267,7 +267,7 @@ function TodayView({ today, onToggle, onAdd, onDelete }) {
                 {["all", ...CATEGORY_LIST].map(c => (
                     <button key={c} onClick={() => setFilter(c)}
                         className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${
-                            filter === c ? "bg-[#00FF66] text-black" : "border border-white/10 text-white/50 hover:text-white/80"
+                            filter === c ? "bg-[#00A3FF] text-black" : "border border-white/10 text-white/50 hover:text-white/80"
                         }`}>
                         {c === "all" ? "All" : CATEGORY_LABEL[c]} ({counts[c] || 0})
                     </button>
@@ -286,14 +286,14 @@ function TodayView({ today, onToggle, onAdd, onDelete }) {
                         <div key={task.id}
                             className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition ${
                                 task.done ? "border-[#00FF66]/40 bg-[#00FF66]/10"
-                                : isCurrent ? "border-[#00FF66]/60 bg-[#00FF66]/[0.06] shadow-[0_0_16px_rgba(0,255,102,0.15)]"
+                                : isCurrent ? "border-[#00A3FF]/60 bg-[#00A3FF]/[0.06] shadow-[0_0_16px_rgba(0,163,255,0.15)]"
                                 : "border-white/10 hover:border-white/20"
                             }`}>
                             <button onClick={() => onToggle(task.id)} className="shrink-0">
                                 {task.done
                                     ? <CheckCircle2 className="w-6 h-6 text-[#00FF66]" />
                                     : isCurrent
-                                        ? <span className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#00FF66]"><Play className="w-2.5 h-2.5 text-[#00FF66] fill-[#00FF66]" /></span>
+                                        ? <span className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#00A3FF]"><Play className="w-2.5 h-2.5 text-[#00A3FF] fill-[#00A3FF]" /></span>
                                         : <Circle className="w-6 h-6 text-white/25" />
                                 }
                             </button>
@@ -375,15 +375,15 @@ function FocusMode() {
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="font-bold text-sm flex items-center gap-1.5">
-                        <Timer className="w-4 h-4 text-[#00FF66]" />Focus Mode
+                        <Timer className="w-4 h-4 text-[#00A3FF]" />Focus Mode
                     </p>
                     <p className="text-xs text-white/40 mt-0.5">Eliminate distractions. Boost your productivity.</p>
                 </div>
-                <div className="font-mono text-2xl font-black text-[#00FF66] shrink-0" style={GLOW_TEXT}>{mm}:{ss}</div>
+                <div className="font-mono text-2xl font-black text-[#00A3FF] shrink-0" style={GLOW_TEXT}>{mm}:{ss}</div>
             </div>
             <div className="flex gap-2 mt-3">
                 <button onClick={() => setRunning(r => !r)}
-                    className="flex-1 py-2 rounded-xl font-black text-xs text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition">
+                    className="flex-1 py-2 rounded-xl font-black text-xs text-black uppercase tracking-widest bg-[#00A3FF] hover:opacity-90 transition">
                     {running ? "Pause" : seconds === 25 * 60 ? "Start Focus Session" : "Resume"}
                 </button>
                 {seconds !== 25 * 60 && (
@@ -420,7 +420,7 @@ function ProgressView() {
         });
     };
 
-    if (!data) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00FF66] animate-spin" /></div>;
+    if (!data) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00A3FF] animate-spin" /></div>;
 
     const leadingBlanks = (data.days[0].weekday + 1) % 7; // Monday=0..Sunday=6 -> Sunday-first grid
     const monthPct = data.month_total ? Math.round((data.month_completed / data.month_total) * 100) : 0;
@@ -450,7 +450,7 @@ function ProgressView() {
                         const missed = d.is_past && d.total > 0 && d.score < d.total;
                         return (
                             <div key={d.date} className={`aspect-square rounded-lg flex items-center justify-center text-xs font-bold relative ${
-                                d.is_today ? "ring-2 ring-[#00FF66]" : ""
+                                d.is_today ? "ring-2 ring-[#00A3FF]" : ""
                             }`}
                                 style={{
                                     background: complete ? "#00FF66" : missed ? "rgba(255,59,48,0.15)" : "rgba(255,255,255,0.04)",
@@ -517,7 +517,7 @@ function QuickAddTask({ onAdd }) {
             <input value={label} onChange={(e) => setLabel(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
                 placeholder="e.g. Solve 30 Questions"
-                className="w-full bg-black/30 border border-[#00FF66]/25 rounded-lg px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-[#00FF66]" />
+                className="w-full bg-black/30 border border-[#00A3FF]/25 rounded-lg px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-[#00A3FF]" />
 
             <div className="flex flex-wrap gap-2 mb-3">
                 {CATEGORY_LIST.map(c => {
@@ -526,7 +526,7 @@ function QuickAddTask({ onAdd }) {
                     return (
                         <button key={c} type="button" onClick={() => setCategory(c)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                                active ? "bg-[#00FF66]/15 text-[#00FF66] border-[#00FF66]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
+                                active ? "bg-[#00A3FF]/15 text-[#00A3FF] border-[#00A3FF]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
                             }`}>
                             <Icon className="w-3.5 h-3.5" />{CATEGORY_LABEL[c]}
                         </button>
@@ -535,12 +535,12 @@ function QuickAddTask({ onAdd }) {
             </div>
 
             <div className="flex gap-2 mb-3">
-                <label className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 focus-within:border-[#00FF66]/40">
-                    <Calendar className="w-3.5 h-3.5 text-[#00FF66] shrink-0" />
+                <label className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 focus-within:border-[#00A3FF]/40">
+                    <Calendar className="w-3.5 h-3.5 text-[#00A3FF] shrink-0" />
                     <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
                         className="bg-transparent outline-none text-white/80 w-full [color-scheme:dark]" />
                 </label>
-                <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 focus-within:border-[#00FF66]/40">
+                <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white/5 border border-white/10 focus-within:border-[#00A3FF]/40">
                     <Clock className="w-3.5 h-3.5 text-white/40 shrink-0" />
                     <input type="number" min="5" step="5" value={duration} onChange={(e) => setDuration(e.target.value)}
                         disabled={!startTime}
@@ -551,7 +551,7 @@ function QuickAddTask({ onAdd }) {
             {!startTime && <p className="text-[11px] text-white/25 -mt-2 mb-3">No time set — task will appear as "Any time" at the end of the list.</p>}
 
             <button onClick={submit} disabled={saving || !label.trim()}
-                className="w-full py-2.5 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition disabled:opacity-40">
+                className="w-full py-2.5 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00A3FF] hover:opacity-90 transition disabled:opacity-40">
                 {saving ? "Adding..." : "Add Task"}
             </button>
         </div>
@@ -560,7 +560,7 @@ function QuickAddTask({ onAdd }) {
 
 // ─── WEEK VIEW ───────────────────────────────────────────────────────────
 function WeekView({ week }) {
-    if (!week) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00FF66] animate-spin" /></div>;
+    if (!week) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00A3FF] animate-spin" /></div>;
 
     const completedDays = week.days.filter(d => d.total > 0 && d.score === d.total).length;
     const pct = week.days.length ? (completedDays / week.days.length) * 100 : 0;
@@ -585,12 +585,12 @@ function WeekView({ week }) {
                     const statusColor = complete ? "#00FF66" : (d.is_past ? "#FF3B30" : "rgba(255,255,255,0.3)");
 
                     return (
-                        <div key={d.date} className={`glass-card p-4 flex items-center justify-between ${d.is_today ? "border-[#00FF66]/40" : ""}`}>
+                        <div key={d.date} className={`glass-card p-4 flex items-center justify-between ${d.is_today ? "border-[#00A3FF]/40" : ""}`}>
                             <div className="flex items-center gap-3">
                                 {d.is_sunday && <Flame className="w-4 h-4 text-[#FFD700]" />}
                                 <div>
                                     <div className="font-bold text-sm">
-                                        {d.weekday} {d.is_today && <span className="text-[#00FF66] text-xs ml-1">(Today)</span>}
+                                        {d.weekday} {d.is_today && <span className="text-[#00A3FF] text-xs ml-1">(Today)</span>}
                                     </div>
                                     <div className="text-xs text-white/40 mt-0.5">
                                         {d.total ? `${d.score}/${d.total} tasks done` : "No tasks set"}
@@ -640,7 +640,7 @@ function CustomView({ onSaved }) {
         } finally { setSaving(false); }
     };
 
-    if (!tasks) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00FF66] animate-spin" /></div>;
+    if (!tasks) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[#00A3FF] animate-spin" /></div>;
 
     return (
         <div className="fade-up">
@@ -667,8 +667,8 @@ function CustomView({ onSaved }) {
                 <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addTask()}
                     placeholder="Add a new task..."
-                    className="flex-1 bg-black/30 border border-[#00FF66]/25 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#00FF66]" />
-                <button onClick={addTask} className="px-4 bg-[#00FF66]/15 text-[#00FF66] border border-[#00FF66]/40 rounded-lg hover:bg-[#00FF66]/25 transition">
+                    className="flex-1 bg-black/30 border border-[#00A3FF]/25 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#00A3FF]" />
+                <button onClick={addTask} className="px-4 bg-[#00A3FF]/15 text-[#00A3FF] border border-[#00A3FF]/40 rounded-lg hover:bg-[#00A3FF]/25 transition">
                     <Plus className="w-4 h-4" />
                 </button>
             </div>
@@ -680,7 +680,7 @@ function CustomView({ onSaved }) {
                     return (
                         <button key={c} type="button" onClick={() => setNewCategory(c)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                                active ? "bg-[#00FF66]/15 text-[#00FF66] border-[#00FF66]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
+                                active ? "bg-[#00A3FF]/15 text-[#00A3FF] border-[#00A3FF]/40" : "bg-white/5 text-white/40 border-white/10 hover:text-white/70"
                             }`}>
                             <Icon className="w-3.5 h-3.5" />{CATEGORY_LABEL[c]}
                         </button>
@@ -689,7 +689,7 @@ function CustomView({ onSaved }) {
             </div>
 
             <button onClick={save} disabled={saving}
-                className="w-full py-3 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00FF66] hover:opacity-90 transition disabled:opacity-50">
+                className="w-full py-3 rounded-xl font-black text-sm text-black uppercase tracking-widest bg-[#00A3FF] hover:opacity-90 transition disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
             </button>
         </div>
