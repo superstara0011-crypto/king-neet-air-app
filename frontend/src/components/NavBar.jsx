@@ -14,7 +14,7 @@ function Avatar({ name, size = 9 }) {
     return (
         <div
             style={{ background: colors[colorIdx] }}
-            className={`w-${size} h-${size} rounded-full flex items-center justify-center text-sm font-black text-white border-2 border-white/20`}
+            className={`w-${size} h-${size} rounded-full flex items-center justify-center text-sm font-black text-white`}
         >
             {initials}
         </div>
@@ -27,36 +27,35 @@ export default function NavBar() {
     const loc = useLocation();
 
     const linkCls = (p) =>
-        `px-3 py-2 text-sm uppercase tracking-wider font-bold transition ${
+        `px-3 py-2 text-sm font-semibold transition rounded-lg ${
             loc.pathname.startsWith(p)
-                ? "text-[#D8A7A0]"
-                : "text-white/70 hover:text-white"
+                ? "text-[#6C63FF] bg-[#F0EEFF]"
+                : "text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]"
         }`;
 
     return (
-        <header className="sticky top-0 z-40 border-b border-[#D8A7A0]/15 bg-[#050805]/80 backdrop-blur-xl">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/90 backdrop-blur-xl">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
                 {/* Logo */}
                 <Link to="/dashboard" className="flex items-center gap-2">
                     <img src="/logo-navbar.png" alt="King NEET AIR" className="w-9 h-9 rounded-full" />
-                    <span className="font-heading font-black text-lg sm:text-xl tracking-tight">
-                        KING NEET <span className="text-[#D8A7A0] glow-text">AIR</span>
+                    <span className="font-heading font-black text-lg sm:text-xl tracking-tight text-[#111827]">
+                        KING NEET <span className="text-[#6C63FF]">AIR</span>
                     </span>
                 </Link>
 
-                {/* Nav Links */}
-                <nav className="hidden md:flex items-center gap-1">
+                {/* Nav Links — tablet-range fallback (Sidebar takes over at lg+) */}
+                <nav className="hidden md:flex lg:hidden items-center gap-1">
                     <Link to="/dashboard" className={linkCls("/dashboard")}>Dashboard</Link>
                     <Link to="/play" className={linkCls("/play")}>Play</Link>
-                    <Link to="/history" className={linkCls("/history")}>History</Link>
-                    <Link to="/leaderboard" className={linkCls("/leaderboard")}>Leaderboard</Link>
                     <Link to="/tracker" className={linkCls("/tracker")}>Tracker</Link>
+                    <Link to="/leaderboard" className={linkCls("/leaderboard")}>Leaderboard</Link>
                     <Link to="/mistakes" className={linkCls("/mistakes")}>Mistakes</Link>
                     {user?.username && (
                         <Link to={`/u/${user.username}`} className={linkCls("/u/")}>Profile</Link>
                     )}
                     {user?.is_admin && (
-                        <Link to="/admin" className={`${linkCls("/admin")} text-[#D4A574]`}>Admin</Link>
+                        <Link to="/admin" className={`${linkCls("/admin")} text-[#B45309]`}>Admin</Link>
                     )}
                 </nav>
 
@@ -65,15 +64,15 @@ export default function NavBar() {
                     {user && (
                         <>
                             <div className="hidden sm:flex flex-col items-end">
-                                <span className="font-mono text-xs text-white/60">@{user.username}</span>
-                                <span className="font-mono text-sm text-[#D8A7A0] font-bold">{user.total_xp?.toLocaleString()} XP</span>
+                                <span className="text-xs text-[#9CA3AF]">@{user.username}</span>
+                                <span className="text-sm text-[#6C63FF] font-bold">{user.total_xp?.toLocaleString()} XP</span>
                             </div>
                             <LevelBadge level={user.level} size="sm" />
                             {/* ✅ Privacy: Always show initials, never Google photo */}
                             <Avatar name={user.name} />
                             <button
                                 onClick={async () => { await logout(); nav("/"); }}
-                                className="text-white/60 hover:text-[#C97064] transition"
+                                className="text-[#9CA3AF] hover:text-[#EF4444] transition"
                                 title="Logout"
                             >
                                 <LogOut className="w-5 h-5" />

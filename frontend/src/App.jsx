@@ -17,30 +17,37 @@ import Admin from "@/pages/Admin";
 import History from "@/pages/History";
 import NavBar from "@/components/NavBar";
 import BottomNav from "@/components/BottomNav";
+import Sidebar from "@/components/Sidebar";
 import Tracker from "@/pages/Tracker";
 import Mistakes from "@/pages/Mistakes";
+import ComingSoon from "@/pages/ComingSoon";
 import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
 
 function Protected({ children }) {
     const { user, loading } = useAuth();
     if (loading) return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#050805] gap-6 px-6">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 px-6">
             <img src="/icon-256.png" alt="King NEET AIR" className="w-24 h-24 rounded-3xl animate-pulse" />
             <div className="text-center">
-                <p className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
-                    Focused. Disciplined. <span className="text-[#D8A7A0]">AIR</span> Ready.
+                <p className="font-mono text-xs uppercase tracking-[0.3em] text-[#9CA3AF]">
+                    Focused. Disciplined. <span className="text-[#6C63FF]">AIR</span> Ready.
                 </p>
             </div>
-            <div className="w-8 h-8 rounded-full border-4 border-[#D8A7A0]/30 border-t-[#D8A7A0] animate-spin" />
+            <div className="w-8 h-8 rounded-full border-4 border-[#6C63FF]/20 border-t-[#6C63FF] animate-spin" />
         </div>
     );
     if (!user) return <Navigate to="/" replace />;
     return (
-        <>
-            <NavBar />
-            <div className="pb-20 md:pb-0">{children}</div>
-            <BottomNav />
-        </>
+        <div className="lg:flex min-h-screen bg-[#F8FAFC]">
+            <Sidebar />
+            <div className="flex-1 min-w-0">
+                <div className="lg:hidden">
+                    <NavBar />
+                </div>
+                <div className="pb-20 lg:pb-0">{children}</div>
+                <BottomNav />
+            </div>
+        </div>
     );
 }
 
@@ -67,6 +74,10 @@ function AppRouter() {
             <Route path="/admin" element={<Protected><Admin /></Protected>} />
             <Route path="/tracker" element={<Protected><Tracker /></Protected>} />
             <Route path="/mistakes" element={<Protected><Mistakes /></Protected>} />
+            <Route path="/notes" element={<Protected><ComingSoon title="Notes" /></Protected>} />
+            <Route path="/revision" element={<Protected><ComingSoon title="Revision" /></Protected>} />
+            <Route path="/doubt-solving" element={<Protected><ComingSoon title="AI Doubt Solving" /></Protected>} />
+            <Route path="/settings" element={<Protected><ComingSoon title="Settings" /></Protected>} />
             <Route path="/live-quiz" element={<Protected><LiveQuizList /></Protected>} />
             <Route path="/live-quiz/:id" element={<Protected><LiveQuizAttempt /></Protected>} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -80,14 +91,15 @@ function App() {
             <BrowserRouter>
                 <AppRouter />
                 <Toaster
-                    theme="dark"
+                    theme="light"
                     position="top-right"
                     toastOptions={{
                         style: {
-                            background: "#0a110a",
-                            border: "1px solid rgba(216,167,160,0.3)",
-                            color: "#fff",
-                            fontFamily: "Outfit, sans-serif",
+                            background: "#fff",
+                            border: "1px solid #E5E7EB",
+                            color: "#111827",
+                            fontFamily: "Inter, sans-serif",
+                            boxShadow: "0 4px 20px rgba(17,24,39,0.08)",
                         },
                     }}
                 />
