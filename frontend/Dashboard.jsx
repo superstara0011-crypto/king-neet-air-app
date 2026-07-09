@@ -27,13 +27,13 @@ function ProgressRing({ percent, size = 72, stroke = 6, color = "#6C63FF" }) {
     return (
         <svg width={size} height={size} className="shrink-0">
             <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-                <circle cx={size / 2} cy={size / 2} r={radius} stroke="#EEF2F6" strokeWidth={stroke} fill="none" />
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke="var(--border)" strokeWidth={stroke} fill="none" />
                 <circle cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth={stroke} fill="none"
                     strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
                     style={{ transition: "stroke-dashoffset 0.5s ease" }} />
             </g>
             <text x="50%" y="50%" dy=".35em" textAnchor="middle"
-                style={{ fontSize: size * 0.24, fontWeight: 800, fill: "#111827", fontFamily: "Poppins, sans-serif" }}>
+                style={{ fontSize: size * 0.24, fontWeight: 800, fill: "var(--text)", fontFamily: "Poppins, sans-serif" }}>
                 {Math.round(clamped)}%
             </text>
         </svg>
@@ -79,24 +79,23 @@ export default function Dashboard() {
     const heatColor = (lvl) => {
         if (lvl === "completed") return "#6C63FF";
         if (lvl === "partial") return "#C7C2FF";
-        return "#EEF2F6";
+        return "var(--border)";
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 bg-[#F8FAFC] min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 bg-[var(--card-hover)] min-h-screen">
 
             {/* Exam Countdown Card */}
-            <div className="relative overflow-hidden flex items-center justify-between gap-3 mb-6 px-6 py-8 sm:py-10 glass-card fade-up"
-                style={{ background: "linear-gradient(120deg, #F5F4FF 0%, #FFFFFF 55%)" }}>
+            <div className="relative overflow-hidden flex items-center justify-between gap-3 mb-6 px-6 py-8 sm:py-10 glass-card gradient-card fade-up">
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
                         <Calendar className="w-4 h-4 text-[#F59E0B]" />
-                        <span className="font-semibold text-xs sm:text-sm text-[#6B7280]">NEET 2027</span>
+                        <span className="font-semibold text-xs sm:text-sm text-[var(--text-secondary)]">NEET 2027</span>
                     </div>
-                    <div className="font-heading text-4xl sm:text-5xl font-extrabold text-[#111827]">
+                    <div className="font-heading text-4xl sm:text-5xl font-extrabold text-[var(--text)]">
                         {daysLeft}
                     </div>
-                    <span className="text-xs text-[#9CA3AF] uppercase tracking-widest font-semibold">Days Left</span>
+                    <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-semibold">Days Left</span>
                 </div>
                 <img src="/steth-illustration.png" alt=""
                     className="absolute right-0 top-1/2 -translate-y-1/2 h-32 sm:h-44 w-auto object-contain opacity-80 pointer-events-none mix-blend-multiply"
@@ -106,8 +105,8 @@ export default function Dashboard() {
             {/* Welcome Header */}
             <div className="flex items-center justify-between mb-6 fade-up">
                 <div>
-                    <p className="text-[#6B7280] text-sm mb-1">Welcome back 👋</p>
-                    <h1 className="font-heading font-extrabold text-3xl sm:text-4xl text-[#111827]">{user.name?.split(" ")[0] || "Champion"}!</h1>
+                    <p className="text-[var(--text-secondary)] text-sm mb-1">Welcome back 👋</p>
+                    <h1 className="font-heading font-extrabold text-3xl sm:text-4xl text-[var(--text)]">{user.name?.split(" ")[0] || "Champion"}!</h1>
                 </div>
                 {user.streak > 0 && (
                     <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A]">
@@ -119,14 +118,13 @@ export default function Dashboard() {
 
             {/* Continue Where You Left Off */}
             {lastActivity && (
-                <div className="glass-card p-4 mb-6 fade-up flex items-center gap-4"
-                    style={{ background: "linear-gradient(120deg, #F5F3FF 0%, #FFFFFF 60%)" }}>
+                <div className="glass-card gradient-card p-4 mb-6 fade-up flex items-center gap-4">
                     <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 bg-[#EDE9FE]">
                         {lastActivity.mode === "daily_quiz" ? "⚡" : lastActivity.mode === "mock_test" ? "🎯" : lastActivity.mode === "pyq" ? "📜" : "📖"}
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="text-[10px] uppercase tracking-widest font-bold text-[#7C3AED] mb-0.5">Continue where you left off</div>
-                        <div className="font-bold text-sm capitalize truncate text-[#111827]">
+                        <div className="font-bold text-sm capitalize truncate text-[var(--text)]">
                             {lastActivity.mode?.replace("_", " ")} {lastActivity.subject ? `· ${lastActivity.subject}` : ""}
                         </div>
                     </div>
@@ -140,28 +138,28 @@ export default function Dashboard() {
 
             {/* Your Progress */}
             <div className="glass-card p-5 mb-6 fade-up">
-                <p className="text-xs uppercase tracking-widest font-bold text-[#9CA3AF] mb-3">Your Progress</p>
+                <p className="text-xs uppercase tracking-widest font-bold text-[var(--text-muted)] mb-3">Your Progress</p>
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                         <ProgressRing percent={xpProgress} />
                         <div>
-                            <div className="font-bold text-lg text-[#111827]">@{user.username}</div>
+                            <div className="font-bold text-lg text-[var(--text)]">@{user.username}</div>
                             <span style={{ color: level.color || "#6C63FF" }} className="text-sm font-bold">{level.emoji} {level.name}</span>
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-2xl font-extrabold text-[#111827]">{user.total_xp?.toLocaleString()} XP</div>
-                        <div className="text-xs text-[#9CA3AF]">{xpToNext?.toLocaleString()} XP to next level</div>
+                        <div className="text-2xl font-extrabold text-[var(--text)]">{user.total_xp?.toLocaleString()} XP</div>
+                        <div className="text-xs text-[var(--text-muted)]">{xpToNext?.toLocaleString()} XP to next level</div>
                     </div>
                 </div>
-                <div className="bg-[#EEF2F6] rounded-full h-2.5 overflow-hidden">
+                <div className="bg-[var(--border)] rounded-full h-2.5 overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-1000"
                         style={{ width: `${xpProgress}%`, background: `linear-gradient(90deg, #6C63FF, #7C3AED)` }} />
                 </div>
                 <div className="flex justify-between mt-1.5">
-                    <span className="text-xs text-[#9CA3AF]">{level.level_min?.toLocaleString()} XP</span>
-                    <span className="text-xs text-[#9CA3AF] font-semibold">{xpProgress}%</span>
-                    <span className="text-xs text-[#9CA3AF]">{level.level_max?.toLocaleString()} XP</span>
+                    <span className="text-xs text-[var(--text-muted)]">{level.level_min?.toLocaleString()} XP</span>
+                    <span className="text-xs text-[var(--text-muted)] font-semibold">{xpProgress}%</span>
+                    <span className="text-xs text-[var(--text-muted)]">{level.level_max?.toLocaleString()} XP</span>
                 </div>
             </div>
 
@@ -176,7 +174,7 @@ export default function Dashboard() {
                     <div key={s.label} className="glass-card p-4">
                         <div className="text-xl mb-2">{s.icon}</div>
                         <div className="text-2xl font-extrabold" style={{ color: s.color }}>{s.value}</div>
-                        <div className="text-xs text-[#9CA3AF] uppercase tracking-widest font-semibold mt-1">{s.label}</div>
+                        <div className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-semibold mt-1">{s.label}</div>
                     </div>
                 ))}
             </div>
@@ -189,13 +187,13 @@ export default function Dashboard() {
                             <Target className="w-4 h-4 text-[#F59E0B]" />
                             <span className="text-xs uppercase tracking-widest font-bold text-[#B45309]">Today's Mission</span>
                         </div>
-                        {stats && <span className="text-xs text-[#9CA3AF]">{stats.today_mission.answered}/{stats.today_mission.goal} Qs</span>}
+                        {stats && <span className="text-xs text-[var(--text-muted)]">{stats.today_mission.answered}/{stats.today_mission.goal} Qs</span>}
                     </div>
-                    <div className="bg-[#EEF2F6] rounded-full h-2.5 overflow-hidden mb-2">
+                    <div className="bg-[var(--border)] rounded-full h-2.5 overflow-hidden mb-2">
                         <div className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${stats?.today_mission?.percent || 0}%`, background: "#F59E0B" }} />
                     </div>
-                    <div className="text-xs text-[#6B7280]">
+                    <div className="text-xs text-[var(--text-secondary)]">
                         {!stats ? "Loading…" : stats.today_mission.completed
                             ? "🎉 Goal complete! Great work today."
                             : `${stats.today_mission.goal - stats.today_mission.answered} more questions to hit today's goal`}
@@ -212,14 +210,14 @@ export default function Dashboard() {
                             <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
                                 <div className="w-full aspect-square rounded-xl flex items-center justify-center text-[10px] font-bold transition-all"
                                     style={{
-                                        background: d ? heatColor(d.level) : "#EEF2F6",
+                                        background: d ? heatColor(d.level) : "var(--border)",
                                         color: d?.level === "completed" ? "#fff" : "#9CA3AF",
                                         outline: d?.is_today ? "2px solid #6C63FF" : "none",
                                         outlineOffset: "1px",
                                     }}>
                                     {d?.level === "completed" ? "✓" : ""}
                                 </div>
-                                <span className="text-[9px] text-[#9CA3AF] font-medium">{d?.label || "·"}</span>
+                                <span className="text-[9px] text-[var(--text-muted)] font-medium">{d?.label || "·"}</span>
                             </div>
                         ))}
                     </div>
@@ -234,10 +232,10 @@ export default function Dashboard() {
                     <div className="glass-card p-4">
                         <div className="text-xs uppercase tracking-widest font-bold text-[#6C63FF] mb-2">⚡ XP System</div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center">
-                            <div className="bg-[#F8FAFC] rounded-xl p-2"><div className="font-extrabold text-[#6C63FF]">+4 XP</div><div className="text-[#9CA3AF]">Live/Daily correct</div></div>
-                            <div className="bg-[#F8FAFC] rounded-xl p-2"><div className="font-extrabold text-[#3B82F6]">+4 XP</div><div className="text-[#9CA3AF]">Normal correct</div></div>
-                            <div className="bg-[#F8FAFC] rounded-xl p-2"><div className="font-extrabold text-[#EF4444]">-1 XP</div><div className="text-[#9CA3AF]">Wrong answer</div></div>
-                            <div className="bg-[#F8FAFC] rounded-xl p-2"><div className="font-extrabold text-[#F59E0B]">+10 XP</div><div className="text-[#9CA3AF]">Chapter bonus</div></div>
+                            <div className="bg-[var(--card-hover)] rounded-xl p-2"><div className="font-extrabold text-[#6C63FF]">+4 XP</div><div className="text-[var(--text-muted)]">Live/Daily correct</div></div>
+                            <div className="bg-[var(--card-hover)] rounded-xl p-2"><div className="font-extrabold text-[#3B82F6]">+4 XP</div><div className="text-[var(--text-muted)]">Normal correct</div></div>
+                            <div className="bg-[var(--card-hover)] rounded-xl p-2"><div className="font-extrabold text-[#EF4444]">-1 XP</div><div className="text-[var(--text-muted)]">Wrong answer</div></div>
+                            <div className="bg-[var(--card-hover)] rounded-xl p-2"><div className="font-extrabold text-[#F59E0B]">+10 XP</div><div className="text-[var(--text-muted)]">Chapter bonus</div></div>
                         </div>
                     </div>
 
@@ -249,7 +247,7 @@ export default function Dashboard() {
                     {history.length > 0 && (
                         <div>
                             <div className="flex items-center justify-between mb-3">
-                                <p className="text-xs uppercase tracking-widest font-bold text-[#9CA3AF]">Recent Activity</p>
+                                <p className="text-xs uppercase tracking-widest font-bold text-[var(--text-muted)]">Recent Activity</p>
                                 <Link to="/history" className="text-xs font-semibold text-[#6C63FF] hover:underline">View all →</Link>
                             </div>
                             <div className="glass-card overflow-hidden divide-y divide-[#E5E7EB]">
@@ -257,8 +255,8 @@ export default function Dashboard() {
                                     <div key={i} className="flex items-center gap-4 px-5 py-3.5">
                                         <div className="text-lg">{h.mode === "daily_quiz" ? "⚡" : h.mode === "mock_test" ? "🎯" : h.mode === "pyq" ? "📜" : "📖"}</div>
                                         <div className="flex-1">
-                                            <div className="font-bold text-sm capitalize text-[#111827]">{h.mode?.replace("_", " ")}</div>
-                                            <div className="text-xs text-[#9CA3AF]">{h.correct}/{h.total} correct • {h.subject || "Mixed"}</div>
+                                            <div className="font-bold text-sm capitalize text-[var(--text)]">{h.mode?.replace("_", " ")}</div>
+                                            <div className="text-xs text-[var(--text-muted)]">{h.correct}/{h.total} correct • {h.subject || "Mixed"}</div>
                                         </div>
                                         <div className="text-sm font-extrabold text-[#6C63FF]">+{h.xp_earned} XP</div>
                                     </div>
@@ -271,21 +269,21 @@ export default function Dashboard() {
                 {/* RIGHT */}
                 <div className="space-y-6">
                     {/* Daily Challenge */}
-                    <div className="glass-card p-5" style={{ background: "linear-gradient(135deg, #F5F4FF 0%, #FFFFFF 60%)" }}>
+                    <div className="glass-card gradient-card p-5">
                         <div className="flex items-center gap-2 mb-3">
                             <Zap className="w-4 h-4 text-[#6C63FF]" />
                             <span className="text-xs uppercase tracking-widest font-bold text-[#6C63FF]">Daily Challenge</span>
                             {dailyDone && <span className="text-xs font-bold text-[#22C55E]">✅ Done!</span>}
                         </div>
-                        <div className="font-extrabold text-2xl mb-1 text-[#111827]">20 Questions</div>
-                        <div className="text-[#6B7280] text-sm mb-4">+4 XP per correct • Streak bonus</div>
+                        <div className="font-extrabold text-2xl mb-1 text-[var(--text)]">20 Questions</div>
+                        <div className="text-[var(--text-secondary)] text-sm mb-4">+4 XP per correct • Streak bonus</div>
                         <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="bg-white rounded-xl p-3 text-center border border-[#E5E7EB]"><div className="font-extrabold text-[#6C63FF]">+4 XP</div><div className="text-xs text-[#9CA3AF]">Per Correct</div></div>
-                            <div className="bg-white rounded-xl p-3 text-center border border-[#E5E7EB]"><div className="font-extrabold text-[#F59E0B]">🔥 {user.streak || 0}</div><div className="text-xs text-[#9CA3AF]">Day Streak</div></div>
+                            <div className="bg-[var(--card)] rounded-xl p-3 text-center border border-[var(--border)]"><div className="font-extrabold text-[#6C63FF]">+4 XP</div><div className="text-xs text-[var(--text-muted)]">Per Correct</div></div>
+                            <div className="bg-[var(--card)] rounded-xl p-3 text-center border border-[var(--border)]"><div className="font-extrabold text-[#F59E0B]">🔥 {user.streak || 0}</div><div className="text-xs text-[var(--text-muted)]">Day Streak</div></div>
                         </div>
                         <button onClick={() => nav("/play/daily_quiz")}
                             disabled={dailyDone}
-                            className={dailyDone ? "w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest bg-[#EEF2F6] text-[#9CA3AF]" : "neon-btn w-full py-3 text-sm uppercase tracking-widest"}>
+                            className={dailyDone ? "w-full py-3 rounded-xl font-bold text-sm uppercase tracking-widest bg-[var(--border)] text-[var(--text-muted)]" : "neon-btn w-full py-3 text-sm uppercase tracking-widest"}>
                             {dailyDone ? "✅ Completed" : "Start Challenge →"}
                         </button>
                     </div>
@@ -295,7 +293,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                                 <Brain className="w-4 h-4 text-[#EF4444]" />
-                                <span className="font-bold text-sm text-[#111827]">Mistake Notebook</span>
+                                <span className="font-bold text-sm text-[var(--text)]">Mistake Notebook</span>
                             </div>
                             {stats?.total_mistakes > 0 && <span className="text-xs font-bold text-[#EF4444]">{stats.total_mistakes}</span>}
                         </div>
@@ -304,8 +302,8 @@ export default function Dashboard() {
                                 <div className="space-y-1.5 mb-3">
                                     {Object.entries(stats.mistake_counts).filter(([, c]) => c > 0).map(([subj, c]) => (
                                         <div key={subj} className="flex items-center justify-between text-xs">
-                                            <span className="text-[#6B7280] capitalize">{subj}</span>
-                                            <span className="text-[#9CA3AF]">{c} mistakes</span>
+                                            <span className="text-[var(--text-secondary)] capitalize">{subj}</span>
+                                            <span className="text-[var(--text-muted)]">{c} mistakes</span>
                                         </div>
                                     ))}
                                 </div>
@@ -315,7 +313,7 @@ export default function Dashboard() {
                                 </button>
                             </>
                         ) : (
-                            <p className="text-xs text-[#9CA3AF]">No mistakes yet — keep up the great accuracy! 🎯</p>
+                            <p className="text-xs text-[var(--text-muted)]">No mistakes yet — keep up the great accuracy! 🎯</p>
                         )}
                     </div>
 
@@ -323,7 +321,7 @@ export default function Dashboard() {
                     <div className="glass-card p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <BookMarked className="w-4 h-4 text-[#7C3AED]" />
-                            <span className="font-bold text-sm text-[#111827]">Study Resources</span>
+                            <span className="font-bold text-sm text-[var(--text)]">Study Resources</span>
                         </div>
                         <div className="space-y-1">
                             {[
@@ -332,10 +330,10 @@ export default function Dashboard() {
                                 { label: "Quick Revision", icon: "⏱️", path: "/notes?type=revision" },
                             ].map(r => (
                                 <button key={r.label} onClick={() => nav(r.path)}
-                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition hover:bg-[#F8FAFC] text-left">
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition hover:bg-[var(--card-hover)] text-left">
                                     <span className="text-lg">{r.icon}</span>
-                                    <span className="flex-1 text-sm font-medium text-[#374151]">{r.label}</span>
-                                    <ChevronRight className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                                    <span className="flex-1 text-sm font-medium text-[var(--text)]">{r.label}</span>
+                                    <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                                 </button>
                             ))}
                         </div>
@@ -346,25 +344,25 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                                 <Trophy className="w-4 h-4 text-[#F59E0B]" />
-                                <span className="font-bold text-sm text-[#111827]">Top Rankers</span>
+                                <span className="font-bold text-sm text-[var(--text)]">Top Rankers</span>
                             </div>
                             <Link to="/leaderboard" className="text-xs font-semibold text-[#6C63FF] hover:underline">View all →</Link>
                         </div>
                         <div className="space-y-3">
                             {leaderboard.map((r, i) => (
                                 <div key={r.user_id} className="flex items-center gap-3">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 ${i === 0 ? "bg-[#FDE68A] text-[#92400E]" : i === 1 ? "bg-[#E5E7EB] text-[#374151]" : i === 2 ? "bg-[#FED7AA] text-[#9A3412]" : "bg-[#F8FAFC] text-[#9CA3AF]"}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 ${i === 0 ? "bg-[#FDE68A] text-[#92400E]" : i === 1 ? "bg-[#E5E7EB] text-[var(--text)]" : i === 2 ? "bg-[#FED7AA] text-[#9A3412]" : "bg-[var(--card-hover)] text-[var(--text-muted)]"}`}>
                                         {i + 1}
                                     </div>
                                     <Avatar name={r.name} size={8} />
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-bold text-xs truncate text-[#111827]">@{r.username}</div>
-                                        <div className="text-[10px] text-[#9CA3AF]">{r.level?.name}</div>
+                                        <div className="font-bold text-xs truncate text-[var(--text)]">@{r.username}</div>
+                                        <div className="text-[10px] text-[var(--text-muted)]">{r.level?.name}</div>
                                     </div>
                                     <div className="text-xs font-extrabold text-[#F59E0B] flex-shrink-0">{(r.xp || r.total_xp || 0).toLocaleString()}</div>
                                 </div>
                             ))}
-                            {leaderboard.length === 0 && <div className="text-center text-[#9CA3AF] text-sm py-4">No data yet</div>}
+                            {leaderboard.length === 0 && <div className="text-center text-[var(--text-muted)] text-sm py-4">No data yet</div>}
                         </div>
                     </div>
 
@@ -374,7 +372,7 @@ export default function Dashboard() {
                             <Clock className="w-4 h-4 text-[#F59E0B]" />
                             <span className="font-bold text-sm text-[#B45309]">14-Day Season</span>
                         </div>
-                        <div className="text-xs text-[#6B7280] space-y-1">
+                        <div className="text-xs text-[var(--text-secondary)] space-y-1">
                             <div className="flex items-center gap-2"><TrendingUp className="w-3 h-3 text-[#22C55E]" /><span>Top 6 → Level UP ⬆️</span></div>
                             <div className="flex items-center gap-2"><span className="w-3 h-3 text-center text-[#F59E0B]">—</span><span>Rank 7-8 → Same Level</span></div>
                             <div className="flex items-center gap-2"><TrendingDown className="w-3 h-3 text-[#EF4444]" /><span>Rank 9-12 → Level DOWN ⬇️</span></div>

@@ -26,10 +26,10 @@ import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
 function Protected({ children }) {
     const { user, loading } = useAuth();
     if (loading) return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 px-6">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--card-hover)] gap-6 px-6">
             <img src="/icon-256.png" alt="King NEET AIR" className="w-24 h-24 rounded-3xl animate-pulse" />
             <div className="text-center">
-                <p className="font-mono text-xs uppercase tracking-[0.3em] text-[#9CA3AF]">
+                <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
                     Focused. Disciplined. <span className="text-[#6C63FF]">AIR</span> Ready.
                 </p>
             </div>
@@ -38,7 +38,7 @@ function Protected({ children }) {
     );
     if (!user) return <Navigate to="/" replace />;
     return (
-        <div className="lg:flex min-h-screen bg-[#F8FAFC]">
+        <div className="lg:flex min-h-screen bg-[var(--card-hover)]">
             <Sidebar />
             <div className="flex-1 min-w-0">
                 <div className="lg:hidden">

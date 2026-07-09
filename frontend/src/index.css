@@ -5,19 +5,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════
+   THEME VARIABLES — every color in the app resolves through
+   these. Never hardcode a hex value in a component; use
+   text-[var(--text)], bg-[var(--card)], border-[var(--border)] etc.
+   ══════════════════════════════════════════════════════ */
 :root {
-    --color-bg: #F8FAFC;
-    --color-surface: #FFFFFF;
-    --color-primary: #6C63FF;
-    --color-primary-dark: #5A52E0;
-    --color-secondary: #7C3AED;
-    --color-success: #22C55E;
-    --color-warning: #F59E0B;
-    --color-danger: #EF4444;
-    --color-info: #3B82F6;
-    --color-text: #111827;
-    --color-text-muted: #6B7280;
-    --color-border: #E5E7EB;
+    --bg: #F5F7FB;
+    --surface: #FFFFFF;
+    --card: #FFFFFF;
+    --card-hover: #FAFAFC;
+    --text: #111827;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+    --border: #E5E7EB;
+    --accent: #6C63FF;
+    --accent-secondary: #7C3AED;
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #3B82F6;
+    --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04), 0 2px 8px rgba(17, 24, 39, 0.04);
+    --shadow-md: 0 4px 16px rgba(17, 24, 39, 0.06), 0 10px 28px rgba(17, 24, 39, 0.06);
+    --scrollbar-thumb: #D8D8E6;
+}
+
+[data-theme="dark"] {
+    --bg: #0F1117;
+    --surface: #171A21;
+    --card: #171A21;
+    --card-hover: #1D2029;
+    --text: #FFFFFF;
+    --text-secondary: #A5A7B0;
+    --text-muted: #6B6E7B;
+    --border: rgba(255, 255, 255, 0.08);
+    --accent: #6C63FF;
+    --accent-secondary: #8B7FFF;
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #3B82F6;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.3);
+    --scrollbar-thumb: #2A2D38;
 }
 
 * {
@@ -25,14 +55,15 @@
 }
 
 html, body {
-    background: var(--color-bg);
+    background: var(--bg);
 }
 
 body {
     font-family: 'Inter', 'Poppins', sans-serif;
-    color: var(--color-text);
+    color: var(--text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .font-heading {
@@ -40,33 +71,32 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════
-   CARDS — soft, white, subtle depth (no neon, no thick borders)
+   CARDS
    ══════════════════════════════════════════════════════ */
 .glass-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
-    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.03), 0 4px 14px rgba(17, 24, 39, 0.045);
-    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease, background 0.2s ease;
 }
 
 .glass-card:hover {
-    box-shadow: 0 4px 18px rgba(17, 24, 39, 0.06), 0 10px 28px rgba(17, 24, 39, 0.06);
+    box-shadow: var(--shadow-md);
 }
 
-/* Optional soft gradient surface, for hero / feature cards */
 .gradient-card {
-    background: linear-gradient(135deg, #F5F4FF 0%, #FFFFFF 60%);
-    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--card)) 0%, var(--card) 60%);
+    border: 1px solid var(--border);
     border-radius: 24px;
-    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.08);
+    box-shadow: var(--shadow-sm);
 }
 
 /* ══════════════════════════════════════════════════════
    BUTTONS
    ══════════════════════════════════════════════════════ */
 .neon-btn {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
     color: #fff;
     font-weight: 700;
     padding: 0.75rem 1.75rem;
@@ -75,30 +105,20 @@ body {
     box-shadow: 0 4px 14px rgba(108, 99, 255, 0.28);
     transition: box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
-
-.neon-btn:hover:not(:disabled) {
-    box-shadow: 0 6px 22px rgba(108, 99, 255, 0.38);
-    transform: translateY(-1px);
-}
-
-.neon-btn:active:not(:disabled) {
-    transform: translateY(0);
-}
+.neon-btn:hover:not(:disabled) { box-shadow: 0 6px 22px rgba(108, 99, 255, 0.38); transform: translateY(-1px); }
+.neon-btn:active:not(:disabled) { transform: translateY(0); }
+.neon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-secondary {
-    background: #fff;
-    color: var(--color-text);
+    background: var(--card);
+    color: var(--text);
     font-weight: 600;
     padding: 0.75rem 1.75rem;
     border-radius: 14px;
-    border: 1.5px solid var(--color-border);
+    border: 1.5px solid var(--border);
     transition: all 0.2s ease;
 }
-
-.btn-secondary:hover:not(:disabled) {
-    border-color: var(--color-primary);
-    background: #F9F8FF;
-}
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); background: var(--card-hover); }
 
 /* ══════════════════════════════════════════════════════
    QUIZ / OPTION CARDS
@@ -109,51 +129,54 @@ body {
     text-align: left;
     padding: 1rem 1.25rem;
     border-radius: 16px;
-    border: 1.5px solid var(--color-border);
-    background: #fff;
-    color: var(--color-text);
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--text);
     font-weight: 500;
     transition: all 0.15s ease;
 }
-
-.opt-btn:hover:not(:disabled) {
-    border-color: var(--color-primary);
-    background: #F9F8FF;
-}
-
+.opt-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--card-hover); }
 .opt-btn.selected {
-    border-color: var(--color-primary);
-    background: #F0EEFF;
-    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.12);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, var(--card));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
+.opt-btn:disabled { opacity: 0.7; cursor: default; }
 
 /* ══════════════════════════════════════════════════════
-   ANIMATIONS — soft, no flashy neon transitions
+   INPUTS
+   ══════════════════════════════════════════════════════ */
+.input-base {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    padding: 0.625rem 1rem;
+    transition: border-color 0.2s ease;
+}
+.input-base:focus { outline: none; border-color: var(--accent); }
+.input-base::placeholder { color: var(--text-muted); }
+
+/* ══════════════════════════════════════════════════════
+   ANIMATIONS
    ══════════════════════════════════════════════════════ */
 @keyframes fadeUp {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-.fade-up {
-    animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+.fade-up { animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 @keyframes softFloat {
     0%, 100% { transform: translateY(0); }
     50%      { transform: translateY(-6px); }
 }
-.float-card {
-    animation: softFloat 4s ease-in-out infinite;
-}
+.float-card { animation: softFloat 4s ease-in-out infinite; }
 
-/* glow-text is intentionally neutralized — no more neon text-shadow anywhere */
-.glow-text {
-    text-shadow: none;
-}
+.glow-text { text-shadow: none; }
 
 /* ══════════════════════════════════════════════════════
    SCROLLBAR
    ══════════════════════════════════════════════════════ */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #D8D8E6; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

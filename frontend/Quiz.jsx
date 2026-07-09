@@ -13,7 +13,7 @@ function CountdownRing({ timeLeft, totalTime, size = 56 }) {
     const pct = totalTime ? Math.max(0, Math.min(1, timeLeft / totalTime)) : 0;
     const offset = circumference - pct * circumference;
     const low = totalTime && timeLeft <= 30;
-    const color = low ? "#C97064" : "#D8A7A0";
+    const color = low ? "var(--danger)" : "var(--accent)";
     const mins = Math.floor(timeLeft / 60);
     const secs = timeLeft % 60;
 
@@ -21,7 +21,7 @@ function CountdownRing({ timeLeft, totalTime, size = 56 }) {
         <div className={`relative shrink-0 ${low ? "animate-pulse" : ""}`} style={{ width: size, height: size }}>
             <svg width={size} height={size}>
                 <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-                    <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} fill="none" />
+                    <circle cx={size / 2} cy={size / 2} r={radius} stroke="var(--border)" strokeWidth={stroke} fill="none" />
                     <circle cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth={stroke} fill="none"
                         strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
                         style={{ transition: "stroke-dashoffset 1s linear" }} />
@@ -149,14 +149,14 @@ export default function Quiz() {
     if (loading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-[#D8A7A0] animate-spin" />
+                <Loader2 className="w-8 h-8 text-[var(--accent)] animate-spin" />
             </div>
         );
     }
 
     if (questions.length === 0) return null;
     const q = questions[idx];
-    const subjColor = SUBJECT_COLORS[q.subject] || "#D8A7A0";
+    const subjColor = SUBJECT_COLORS[q.subject] || "var(--accent)";
     const progress = (idx / questions.length) * 100;
     const answeredCount = Object.keys(answersMap).length;
 
@@ -294,20 +294,20 @@ export default function Quiz() {
                     >
                         {SUBJECT_LABEL[q.subject] || q.subject}
                     </span>
-                    <span className="font-mono text-xs uppercase tracking-widest text-white/50 shrink-0">{mode.replace("_", " ")}</span>
+                    <span className="font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)] shrink-0">{mode.replace("_", " ")}</span>
                     {q.is_pyq && q.year && (
-                        <span className="font-mono text-xs text-[#D4A574] shrink-0">PYQ {q.year}</span>
+                        <span className="font-mono text-xs text-[var(--warning)] shrink-0">PYQ {q.year}</span>
                     )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                     <button onClick={() => setNavigatorOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/15 text-white/60 hover:text-white text-xs font-bold transition"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)] text-xs font-bold transition"
                         data-testid="open-navigator-btn">
                         <List className="w-3.5 h-3.5" />
                         {answeredCount}/{questions.length}
                     </button>
                     {timeLeft !== null && <CountdownRing timeLeft={timeLeft} totalTime={totalTime} size={48} />}
-                    <button onClick={() => nav("/dashboard")} className="text-white/40 hover:text-white" data-testid="quit-quiz-btn">
+                    <button onClick={() => nav("/dashboard")} className="text-[var(--text-muted)] hover:text-[var(--text)]" data-testid="quit-quiz-btn">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -315,21 +315,21 @@ export default function Quiz() {
 
             {/* Progress */}
             <div className="mb-6">
-                <div className="flex justify-between mb-2 font-mono text-xs uppercase tracking-widest text-white/60">
+                <div className="flex justify-between mb-2 font-mono text-xs uppercase tracking-widest text-[var(--text-secondary)]">
                     <span data-testid="quiz-progress">Question {idx + 1} / {questions.length}</span>
                     <span>{Math.round(progress)}%</span>
                 </div>
-                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#D8A7A0] transition-all duration-500" style={{ width: `${progress}%`, boxShadow: "0 0 10px rgba(216,167,160,0.6)" }} />
+                <div className="h-2 bg-[var(--card-hover)] rounded-full overflow-hidden">
+                    <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%`, boxShadow: "0 0 10px rgba(108,99,255,0.6)" }} />
                 </div>
             </div>
 
             <div className="glass-card p-6 sm:p-8 fade-up" key={q.id}>
                 <div className="flex items-center justify-between mb-2">
-                    <p className="font-mono text-xs uppercase tracking-widest text-white/40">Chapter · {q.chapter}</p>
+                    <p className="font-mono text-xs uppercase tracking-widest text-[var(--text-muted)]">Chapter · {q.chapter}</p>
                     <button onClick={toggleMark}
                         className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border transition ${
-                            marked.has(idx) ? "text-[#D4A574] border-[#D4A574]/50 bg-[#D4A574]/10" : "text-white/40 border-white/15 hover:text-white/70"
+                            marked.has(idx) ? "text-[var(--warning)] border-[var(--warning)]/50 bg-[var(--warning)]/10" : "text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text)]"
                         }`}>
                         <Flag className="w-3.5 h-3.5" />
                         {marked.has(idx) ? "Marked" : "Mark for review"}
@@ -345,10 +345,10 @@ export default function Quiz() {
                         <img
                             src={q.image_url}
                             alt="Question diagram"
-                            className="w-full max-h-72 object-contain rounded-xl border border-white/10 bg-white"
+                            className="w-full max-h-72 object-contain rounded-xl border border-[var(--border)] bg-white"
                             data-testid="quiz-question-image"
                         />
-                        <span className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/70 text-white text-xs font-bold opacity-90 group-hover:opacity-100 group-hover:bg-black/85 transition">
+                        <span className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/70 text-[var(--text)] text-xs font-bold opacity-90 group-hover:opacity-100 group-hover:bg-black/85 transition">
                             <ZoomIn className="w-3.5 h-3.5" />
                             Tap to zoom
                         </span>
@@ -366,8 +366,8 @@ export default function Quiz() {
                         const eliminated = hintEliminated.includes(i);
                         let extraCls = "";
                         if (checkResult) {
-                            if (i === checkResult.correct_option) extraCls = "border-[#9CAF88] bg-[#9CAF88]/10 text-[#9CAF88]";
-                            else if (i === selected && !checkResult.is_correct) extraCls = "border-[#C97064] bg-[#C97064]/10 text-[#C97064]";
+                            if (i === checkResult.correct_option) extraCls = "border-[var(--success)] bg-[var(--success)]/10 text-[var(--success)]";
+                            else if (i === selected && !checkResult.is_correct) extraCls = "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]";
                         }
                         return (
                             <button
@@ -377,39 +377,39 @@ export default function Quiz() {
                                 className={`opt-btn ${selected === i ? "selected" : ""} ${extraCls} ${eliminated ? "opacity-30 line-through" : ""}`}
                                 data-testid={`quiz-option-${i}`}
                             >
-                                <span className="font-mono font-bold text-[#D8A7A0] mr-3">{String.fromCharCode(65 + i)}.</span>
+                                <span className="font-mono font-bold text-[var(--accent)] mr-3">{String.fromCharCode(65 + i)}.</span>
                                 {opt}
-                                {checkResult && i === checkResult.correct_option && <CheckCircle2 className="w-4 h-4 inline ml-2 text-[#9CAF88]" />}
-                                {checkResult && i === selected && !checkResult.is_correct && <XCircle className="w-4 h-4 inline ml-2 text-[#C97064]" />}
+                                {checkResult && i === checkResult.correct_option && <CheckCircle2 className="w-4 h-4 inline ml-2 text-[var(--success)]" />}
+                                {checkResult && i === selected && !checkResult.is_correct && <XCircle className="w-4 h-4 inline ml-2 text-[var(--danger)]" />}
                             </button>
                         );
                     })}
                 </div>
 
                 {checkResult?.explanation && (
-                    <div className="mt-4 bg-white/5 rounded-lg p-3 text-sm text-white/60 leading-relaxed">
+                    <div className="mt-4 bg-[var(--card-hover)] rounded-lg p-3 text-sm text-[var(--text-secondary)] leading-relaxed">
                         💡 {checkResult.explanation}
                     </div>
                 )}
 
                 {isPractice && (
-                    <div className="flex items-center gap-2 flex-wrap mt-5 pt-5 border-t border-white/10">
+                    <div className="flex items-center gap-2 flex-wrap mt-5 pt-5 border-t border-[var(--border)]">
                         <button onClick={handleHint} disabled={hintLoading || hintEliminated.length > 0}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#D4A574]/30 text-[#D4A574] hover:bg-[#D4A574]/10 transition disabled:opacity-40">
-                            <Lightbulb className="w-3.5 h-3.5" />Hint <span className="text-white/40">-1 XP</span>
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[var(--warning)]/30 text-[var(--warning)] hover:bg-[var(--warning)]/10 transition disabled:opacity-40">
+                            <Lightbulb className="w-3.5 h-3.5" />Hint <span className="text-[var(--text-muted)]">-1 XP</span>
                         </button>
                         <button onClick={handleBookmark}
                             className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border transition ${
-                                bookmarked.has(q.id) ? "border-[#A8C0C9]/50 text-[#A8C0C9] bg-[#A8C0C9]/10" : "border-white/15 text-white/50 hover:text-white/80"
+                                bookmarked.has(q.id) ? "border-[#A8C0C9]/50 text-[#A8C0C9] bg-[#A8C0C9]/10" : "border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)]"
                             }`}>
                             <Bookmark className="w-3.5 h-3.5" />{bookmarked.has(q.id) ? "Bookmarked" : "Bookmark"}
                         </button>
                         <button onClick={openNote}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-white/15 text-white/50 hover:text-white/80 transition">
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)] transition">
                             <StickyNote className="w-3.5 h-3.5" />Add Note
                         </button>
                         <button onClick={() => setReportOpen(o => !o)}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[#C97064]/30 text-[#C97064] hover:bg-[#C97064]/10 transition ml-auto">
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-[var(--danger)]/30 text-[var(--danger)] hover:bg-[var(--danger)]/10 transition ml-auto">
                             <AlertTriangle className="w-3.5 h-3.5" />Report Error
                         </button>
                     </div>
@@ -420,9 +420,9 @@ export default function Quiz() {
                         <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)}
                             placeholder="Write a note for this question..."
                             rows={3}
-                            className="w-full bg-black/30 border border-white/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D8A7A0]" />
+                            className="w-full bg-black/30 border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]" />
                         <button onClick={saveNote} disabled={noteSaving}
-                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#D8A7A0] text-black disabled:opacity-50">
+                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[var(--accent)] text-black disabled:opacity-50">
                             {noteSaving ? "Saving..." : "Save Note"}
                         </button>
                     </div>
@@ -433,9 +433,9 @@ export default function Quiz() {
                         <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)}
                             placeholder="What's wrong with this question? (e.g. wrong answer, typo, unclear)"
                             rows={2}
-                            className="w-full bg-black/30 border border-[#C97064]/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C97064]" />
+                            className="w-full bg-black/30 border border-[var(--danger)]/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--danger)]" />
                         <button onClick={submitReport} disabled={reportSubmitting || !reportReason.trim()}
-                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[#C97064] text-white disabled:opacity-50">
+                            className="mt-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-[var(--danger)] text-[var(--text)] disabled:opacity-50">
                             {reportSubmitting ? "Submitting..." : "Submit Report"}
                         </button>
                     </div>
@@ -445,7 +445,7 @@ export default function Quiz() {
                     <button
                         onClick={() => goTo(Math.max(0, idx - 1))}
                         disabled={idx === 0 || submitting}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/15 text-white/60 hover:text-white font-bold text-sm transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)] font-bold text-sm transition disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <ChevronLeft className="w-4 h-4" />Previous
                     </button>
@@ -464,19 +464,19 @@ export default function Quiz() {
             {navigatorOpen && (
                 <div className="fixed inset-0 z-[90] flex items-end" onClick={() => setNavigatorOpen(false)}>
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                    <div className="relative w-full max-w-3xl mx-auto bg-[#0a0f0a] border-t border-[#D8A7A0]/20 rounded-t-3xl p-5 max-h-[75vh] overflow-y-auto"
+                    <div className="relative w-full max-w-3xl mx-auto bg-[var(--card)] border-t border-[var(--accent)]/20 rounded-t-3xl p-5 max-h-[75vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}>
-                        <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
+                        <div className="w-10 h-1 rounded-full bg-[var(--border)] mx-auto mb-4" />
                         <p className="font-bold text-sm mb-4">Questions</p>
                         <div className="grid grid-cols-5 gap-2 mb-4">
                             {questions.map((_, i) => {
                                 const status = questionStatus(i);
                                 const styles = {
-                                    current: "border-2 border-[#D8A7A0] text-white bg-[#D8A7A0]/10",
-                                    answered: "bg-[#D8A7A0] text-black border-transparent",
-                                    marked: "bg-[#D4A574]/20 text-[#D4A574] border border-[#D4A574]/50",
-                                    visited: "bg-white/5 text-white/50 border border-white/10",
-                                    unvisited: "bg-transparent text-white/30 border border-white/10",
+                                    current: "border-2 border-[var(--accent)] text-[var(--text)] bg-[var(--accent)]/10",
+                                    answered: "bg-[var(--accent)] text-black border-transparent",
+                                    marked: "bg-[var(--warning)]/20 text-[var(--warning)] border border-[var(--warning)]/50",
+                                    visited: "bg-[var(--card-hover)] text-[var(--text-secondary)] border border-[var(--border)]",
+                                    unvisited: "bg-transparent text-[var(--text-muted)] border border-[var(--border)]",
                                 };
                                 return (
                                     <button key={i} onClick={() => goTo(i)}
@@ -486,11 +486,11 @@ export default function Quiz() {
                                 );
                             })}
                         </div>
-                        <div className="flex items-center flex-wrap gap-3 text-[11px] text-white/50">
-                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#D8A7A0]" />Answered</span>
-                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#D4A574]/30 border border-[#D4A574]/50" />Marked</span>
-                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white/5 border border-white/10" />Visited</span>
-                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-white/10" />Not Visited</span>
+                        <div className="flex items-center flex-wrap gap-3 text-[11px] text-[var(--text-secondary)]">
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[var(--accent)]" />Answered</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[var(--warning)]/30 border border-[var(--warning)]/50" />Marked</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[var(--card-hover)] border border-[var(--border)]" />Visited</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-[var(--border)]" />Not Visited</span>
                         </div>
                     </div>
                 </div>
@@ -505,9 +505,9 @@ export default function Quiz() {
                 >
                     <button
                         onClick={() => setImageZoomed(false)}
-                        className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+                        className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 rounded-full bg-[var(--card-hover)] hover:bg-[var(--border)] flex items-center justify-center transition"
                     >
-                        <X className="w-5 h-5 text-white" />
+                        <X className="w-5 h-5 text-[var(--text)]" />
                     </button>
                     <img
                         src={q.image_url}
@@ -515,7 +515,7 @@ export default function Quiz() {
                         className="max-w-full max-h-full object-contain rounded-lg bg-white cursor-zoom-out"
                         onClick={(e) => e.stopPropagation()}
                     />
-                    <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs font-mono">
+                    <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[var(--text-secondary)] text-xs font-mono">
                         Tap anywhere to close
                     </p>
                 </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
     LayoutDashboard, Dumbbell, LineChart, ClipboardList, BookOpen, StickyNote,
     XCircle, Trophy, MessageCircleQuestion, User, ShieldCheck, LogOut, Crown,
@@ -26,11 +27,11 @@ export default function Sidebar() {
     const isActive = (path) => loc.pathname === path || (path !== "/dashboard" && loc.pathname.startsWith(path));
 
     return (
-        <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 bg-white border-r border-[#E5E7EB] px-4 py-6">
+        <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 bg-[var(--card)] border-r border-[var(--border)] px-4 py-6">
             {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2.5 px-2 mb-8">
                 <img src="/logo-navbar.png" alt="King NEET AIR" className="w-9 h-9 rounded-xl" />
-                <span className="font-heading font-black text-lg text-[#111827] tracking-tight">
+                <span className="font-heading font-black text-lg text-[var(--text)] tracking-tight">
                     KING NEET <span className="text-[#6C63FF]">AIR</span>
                 </span>
             </Link>
@@ -46,8 +47,8 @@ export default function Sidebar() {
                             to={item.path}
                             className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                                 active
-                                    ? "bg-[#F0EEFF] text-[#6C63FF]"
-                                    : "text-[#6B7280] hover:bg-[#F8FAFC] hover:text-[#111827]"
+                                    ? "bg-[var(--accent)]/10 text-[#6C63FF]"
+                                    : "text-[var(--text-secondary)] hover:bg-[var(--card-hover)] hover:text-[var(--text)]"
                             }`}
                         >
                             <Icon className="w-[18px] h-[18px] shrink-0" />
@@ -67,15 +68,17 @@ export default function Sidebar() {
                         Admin
                     </Link>
                 )}
+
+                <ThemeToggle variant="full" />
             </nav>
 
             {/* Bottom: Profile + Premium + Logout */}
-            <div className="pt-4 border-t border-[#E5E7EB] space-y-1">
+            <div className="pt-4 border-t border-[var(--border)] space-y-1">
                 {user?.username && (
                     <Link
                         to={`/u/${user.username}`}
                         className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                            isActive("/u/") ? "bg-[#F0EEFF] text-[#6C63FF]" : "text-[#6B7280] hover:bg-[#F8FAFC] hover:text-[#111827]"
+                            isActive("/u/") ? "bg-[var(--accent)]/10 text-[#6C63FF]" : "text-[var(--text-secondary)] hover:bg-[var(--card-hover)] hover:text-[var(--text)]"
                         }`}
                     >
                         <User className="w-[18px] h-[18px] shrink-0" />

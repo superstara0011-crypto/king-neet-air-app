@@ -33,7 +33,7 @@ export default function BottomNav() {
 
     return (
         <>
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[#E5E7EB] bg-white/95 backdrop-blur-xl"
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-xl"
                 style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
                 <div className="flex items-center justify-around px-1 py-2">
                     {TABS.map(tab => {
@@ -49,8 +49,8 @@ export default function BottomNav() {
                         );
                     })}
                     <button onClick={() => setMoreOpen(true)} className="flex flex-col items-center gap-1 px-3 py-1.5 min-w-[56px]">
-                        <MoreHorizontal className="w-5 h-5 text-[#9CA3AF]" />
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF]">More</span>
+                        <MoreHorizontal className="w-5 h-5 text-[var(--text-muted)]" />
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">More</span>
                     </button>
                 </div>
             </nav>
@@ -58,7 +58,7 @@ export default function BottomNav() {
             {moreOpen && (
                 <div className="lg:hidden fixed inset-0 z-50 flex items-end" onClick={() => setMoreOpen(false)}>
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-                    <div className="relative w-full bg-white border-t border-[#E5E7EB] rounded-t-3xl p-5 shadow-[0_-8px_30px_rgba(17,24,39,0.12)]"
+                    <div className="relative w-full bg-[var(--card)] border-t border-[var(--border)] rounded-t-3xl p-5 shadow-[0_-8px_30px_rgba(17,24,39,0.12)]"
                         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="w-10 h-1 rounded-full bg-[#E5E7EB] mx-auto mb-5" />
@@ -67,23 +67,23 @@ export default function BottomNav() {
                                 const Icon = item.icon;
                                 return (
                                     <Link key={item.path} to={item.path} onClick={() => setMoreOpen(false)}
-                                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#F8FAFC] transition">
-                                        <Icon className="w-5 h-5 text-[#6B7280]" />
-                                        <span className="font-semibold text-sm text-[#111827]">{item.label}</span>
+                                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--card-hover)] transition">
+                                        <Icon className="w-5 h-5 text-[var(--text-secondary)]" />
+                                        <span className="font-semibold text-sm text-[var(--text)]">{item.label}</span>
                                     </Link>
                                 );
                             })}
                             {user?.username && (
                                 <Link to={`/u/${user.username}`} onClick={() => setMoreOpen(false)}
-                                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#F8FAFC] transition">
-                                    <User className="w-5 h-5 text-[#6B7280]" />
-                                    <span className="font-semibold text-sm text-[#111827]">Profile</span>
+                                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--card-hover)] transition">
+                                    <User className="w-5 h-5 text-[var(--text-secondary)]" />
+                                    <span className="font-semibold text-sm text-[var(--text)]">Profile</span>
                                 </Link>
                             )}
                             <Link to="/settings" onClick={() => setMoreOpen(false)}
-                                className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#F8FAFC] transition">
-                                <Settings className="w-5 h-5 text-[#6B7280]" />
-                                <span className="font-semibold text-sm text-[#111827]">Settings</span>
+                                className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[var(--card-hover)] transition">
+                                <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
+                                <span className="font-semibold text-sm text-[var(--text)]">Settings</span>
                             </Link>
                             {user?.is_admin && (
                                 <Link to="/admin" onClick={() => setMoreOpen(false)}
@@ -98,7 +98,7 @@ export default function BottomNav() {
                                 <span className="font-semibold text-sm text-[#EF4444]">Logout</span>
                             </button>
                         </div>
-                        <button onClick={() => setMoreOpen(false)} className="absolute top-4 right-4 text-[#9CA3AF]">
+                        <button onClick={() => setMoreOpen(false)} className="absolute top-4 right-4 text-[var(--text-muted)]">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
