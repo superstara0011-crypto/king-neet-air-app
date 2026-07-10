@@ -6,8 +6,11 @@ PW-style: admins upload notes (PDF/images via Cloudinary),
 students browse and download.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
+import os
 import uuid
-from fastapi import APIRouter, Request, HTTPException
+import cloudinary
+import cloudinary.uploader
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +19,36 @@ from database import db
 from deps import require_user
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    secure=True,
+)
+
+
+@router.post("/upload")
+async def upload_note_file(request: Request, file: UploadFile = File(...)):
+    """Admin uploads the raw file here first; gets back a URL to pass into POST /notes."""
+    user = await require_user(request)
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    try:
+        result = cloudinary.uploader.upload(
+            file.file,
+            resource_type="auto",  # handles both PDF and image
+            folder="king_neet_air/notes",
+            public_id=f"note_{uuid.uuid4().hex[:12]}",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    return {
+        "file_url": result.get("secure_url"),
+        "file_type": "pdf" if result.get("format") == "pdf" else "image",
+    }
 
 
 class NoteCreate(BaseModel):

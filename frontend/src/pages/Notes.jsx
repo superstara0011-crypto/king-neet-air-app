@@ -104,41 +104,28 @@ function UploadModal({ onClose, onUploaded }) {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
 
-    // NOTE: adjust CLOUD_NAME / UPLOAD_PRESET to match your existing Cloudinary
-    // setup (same values used for question-image uploads in the Admin panel).
-    const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
-    const UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
-
     const submit = async () => {
         if (!title.trim() || !file) { toast.error("Add a title and choose a file"); return; }
-        if (!CLOUD_NAME || !UPLOAD_PRESET) {
-            toast.error("Cloudinary isn't configured — check REACT_APP_CLOUDINARY_* env vars");
-            return;
-        }
         setUploading(true);
         try {
             const form = new FormData();
             form.append("file", file);
-            form.append("upload_preset", UPLOAD_PRESET);
-            const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-                method: "POST",
-                body: form,
+            const uploadRes = await api.post("/notes/upload", form, {
+                headers: { "Content-Type": "multipart/form-data" },
             });
-            const cloudData = await cloudRes.json();
-            if (!cloudData.secure_url) throw new Error("Upload failed");
 
             await api.post("/notes", {
                 title: title.trim(),
                 subject,
                 chapter: chapter.trim(),
                 note_type: noteType,
-                file_url: cloudData.secure_url,
-                file_type: file.type.includes("pdf") ? "pdf" : "image",
+                file_url: uploadRes.data.file_url,
+                file_type: uploadRes.data.file_type,
             });
             toast.success("Note uploaded!");
             onUploaded();
         } catch (e) {
-            toast.error("Upload failed — try again");
+            toast.error(e.response?.data?.detail || "Upload failed — try again");
         } finally {
             setUploading(false);
         }
