@@ -20,6 +20,7 @@ import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import Tracker from "@/pages/Tracker";
 import Mistakes from "@/pages/Mistakes";
+import Notes from "@/pages/Notes";
 import ComingSoon from "@/pages/ComingSoon";
 import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
 
@@ -74,7 +75,7 @@ function AppRouter() {
             <Route path="/admin" element={<Protected><Admin /></Protected>} />
             <Route path="/tracker" element={<Protected><Tracker /></Protected>} />
             <Route path="/mistakes" element={<Protected><Mistakes /></Protected>} />
-            <Route path="/notes" element={<Protected><ComingSoon title="Notes" /></Protected>} />
+            <Route path="/notes" element={<Protected><Notes /></Protected>} />
             <Route path="/revision" element={<Protected><ComingSoon title="Revision" /></Protected>} />
             <Route path="/doubt-solving" element={<Protected><ComingSoon title="AI Doubt Solving" /></Protected>} />
             <Route path="/settings" element={<Protected><ComingSoon title="Settings" /></Protected>} />
