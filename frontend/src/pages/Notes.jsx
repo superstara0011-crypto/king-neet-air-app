@@ -27,9 +27,19 @@ export default function Notes() {
 
     useEffect(() => { load(); }, [subject]); // eslint-disable-line
 
+    // Cloudinary serves files inline by default. Injecting fl_attachment into
+    // the URL tells it to send a Content-Disposition: attachment header instead,
+    // which makes the browser download the file rather than open/preview it.
+    const toDownloadUrl = (url) => url.replace("/upload/", "/upload/fl_attachment/");
+
     const handleDownload = async (note) => {
         api.post(`/notes/${note.note_id}/download`).catch(() => {});
-        window.open(note.file_url, "_blank");
+        const a = document.createElement("a");
+        a.href = toDownloadUrl(note.file_url);
+        a.download = note.title;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     };
 
     return (

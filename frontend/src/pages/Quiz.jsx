@@ -73,6 +73,7 @@ export default function Quiz() {
     const timeSpentRef = useRef({});
     const enteredAtRef = useRef(Date.now());
     const prevIdxRef = useRef(0);
+    const liveIdxRef = useRef(0);
 
     useEffect(() => {
         (async () => {
@@ -101,6 +102,7 @@ export default function Quiz() {
 
     // Track time spent per question whenever the current index changes
     useEffect(() => {
+        liveIdxRef.current = idx;
         const prev = prevIdxRef.current;
         const elapsed = (Date.now() - enteredAtRef.current) / 1000;
         timeSpentRef.current[prev] = (timeSpentRef.current[prev] || 0) + elapsed;
@@ -164,6 +166,7 @@ export default function Quiz() {
 
     const selectOption = async (i) => {
         if (isPractice && checkResult) return; // locked after checking, until Next
+        const askedForIdx = idx; // remember which question this selection belongs to
         const next = { ...answersMapRef.current, [idx]: i };
         answersMapRef.current = next;
         setAnswersMap(next);
@@ -172,11 +175,17 @@ export default function Quiz() {
             setChecking(true);
             try {
                 const r = await api.post("/quiz/check", { question_id: q.id, selected_option: i });
-                setCheckResult(r.data);
+                // If the user already moved to a different question while this was
+                // in flight, discard the response — it belongs to the old question.
+                if (askedForIdx === liveIdxRef.current) {
+                    setCheckResult(r.data);
+                }
             } catch {
                 // fail silently — feedback is a nice-to-have, shouldn't block the quiz
             } finally {
-                setChecking(false);
+                if (askedForIdx === liveIdxRef.current) {
+                    setChecking(false);
+                }
             }
         }
     };
