@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import {
-    Loader2, Download, Upload, FileText, X, BookOpen, Target, Beaker, Sparkles,
+    Loader2, Download, FileText, Image as ImageIcon, BookOpen, Target, Beaker,
+    Sparkles, X, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { toast } from "sonner";
 
 const SUBJECTS = [
     { id: "all", label: "All" },
@@ -13,30 +12,23 @@ const SUBJECTS = [
     { id: "chemistry", label: "Chemistry", icon: Beaker },
 ];
 
-const TYPE_LABEL = { notes: "Chapter Notes", formula_sheet: "Formula Sheet", revision: "Quick Revision" };
+// Cloudinary serves files inline by default; fl_attachment forces a real download.
+const toDownloadUrl = (url) => url.replace("/upload/", "/upload/fl_attachment/");
 
 export default function Notes() {
-    const { user } = useAuth();
     const [notes, setNotes] = useState(null);
     const [subject, setSubject] = useState("all");
-    const [uploadOpen, setUploadOpen] = useState(false);
+    const [expanded, setExpanded] = useState(null);
+    const [imageViewer, setImageViewer] = useState(null);
 
-    const load = () => {
-        api.get("/notes", { params: { subject } }).then(r => setNotes(r.data.notes)).catch(() => setNotes([]));
-    };
+    useEffect(() => {
+        api.get("/notes", { params: { subject } }).then(r => setNotes(r.data)).catch(() => setNotes([]));
+    }, [subject]);
 
-    useEffect(() => { load(); }, [subject]); // eslint-disable-line
-
-    // Cloudinary serves files inline by default. Injecting fl_attachment into
-    // the URL tells it to send a Content-Disposition: attachment header instead,
-    // which makes the browser download the file rather than open/preview it.
-    const toDownloadUrl = (url) => url.replace("/upload/", "/upload/fl_attachment/");
-
-    const handleDownload = async (note) => {
-        api.post(`/notes/${note.note_id}/download`).catch(() => {});
+    const handleDownload = (note) => {
         const a = document.createElement("a");
         a.href = toDownloadUrl(note.file_url);
-        a.download = note.title;
+        a.download = note.file_name || note.title;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -44,19 +36,11 @@ export default function Notes() {
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-            <div className="flex items-center justify-between mb-6 fade-up">
-                <div>
-                    <p className="text-xs uppercase tracking-widest font-bold text-[var(--text-muted)] mb-1">Study Library</p>
-                    <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-[var(--text)]">Notes</h1>
-                </div>
-                {user?.is_admin && (
-                    <button onClick={() => setUploadOpen(true)} className="neon-btn flex items-center gap-2 text-sm">
-                        <Upload className="w-4 h-4" />Upload
-                    </button>
-                )}
+            <div className="mb-6 fade-up">
+                <p className="text-xs uppercase tracking-widest font-bold text-[var(--text-muted)] mb-1">Study Library</p>
+                <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-[var(--text)]">Notes</h1>
             </div>
 
-            {/* Subject filter */}
             <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
                 {SUBJECTS.map(s => (
                     <button key={s.id} onClick={() => setSubject(s.id)}
@@ -69,7 +53,6 @@ export default function Notes() {
                 ))}
             </div>
 
-            {/* Notes grid */}
             {!notes ? (
                 <div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 text-[var(--accent)] animate-spin" /></div>
             ) : notes.length === 0 ? (
@@ -79,108 +62,61 @@ export default function Notes() {
                 </div>
             ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
-                    {notes.map(n => (
-                        <div key={n.note_id} className="glass-card p-4 flex items-start gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
-                                <FileText className="w-5 h-5 text-[var(--accent)]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--accent)] mb-0.5">
-                                    {TYPE_LABEL[n.note_type] || "Notes"}
+                    {notes.map(n => {
+                        const hasFile = !!n.file_url;
+                        const hasImage = !!n.image_url && !hasFile;
+                        const hasContent = !!n.content?.trim();
+                        const isExpanded = expanded === n.id;
+
+                        return (
+                            <div key={n.id} className="glass-card p-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-11 h-11 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
+                                        {hasFile ? <FileText className="w-5 h-5 text-[var(--accent)]" /> : <ImageIcon className="w-5 h-5 text-[var(--accent)]" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-sm text-[var(--text)] truncate">{n.title}</div>
+                                        <div className="text-xs text-[var(--text-muted)] capitalize">{n.subject}{n.chapter ? ` · ${n.chapter}` : ""}</div>
+                                    </div>
+                                    {hasFile && (
+                                        <button onClick={() => handleDownload(n)}
+                                            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition">
+                                            <Download className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="font-bold text-sm text-[var(--text)] truncate">{n.title}</div>
-                                <div className="text-xs text-[var(--text-muted)] capitalize">{n.subject}{n.chapter ? ` · ${n.chapter}` : ""}</div>
+
+                                {hasImage && (
+                                    <button onClick={() => setImageViewer(n.image_url)} className="block mt-3 w-full">
+                                        <img src={n.image_url} alt={n.title} className="w-full max-h-40 object-cover rounded-xl border border-[var(--border)]" />
+                                    </button>
+                                )}
+
+                                {hasContent && (
+                                    <div className="mt-3">
+                                        <button onClick={() => setExpanded(isExpanded ? null : n.id)}
+                                            className="flex items-center gap-1 text-xs font-bold text-[var(--accent)]">
+                                            {isExpanded ? "Hide" : "Read"} {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                        </button>
+                                        {isExpanded && (
+                                            <p className="mt-2 text-sm text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">{n.content}</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            <button onClick={() => handleDownload(n)}
-                                className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition">
-                                <Download className="w-4 h-4" />
-                            </button>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
-            {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} onUploaded={() => { setUploadOpen(false); load(); }} />}
-        </div>
-    );
-}
-
-// ─── Admin upload modal ───────────────────────────────────────────────
-function UploadModal({ onClose, onUploaded }) {
-    const [title, setTitle] = useState("");
-    const [subject, setSubject] = useState("biology");
-    const [chapter, setChapter] = useState("");
-    const [noteType, setNoteType] = useState("notes");
-    const [file, setFile] = useState(null);
-    const [uploading, setUploading] = useState(false);
-
-    const submit = async () => {
-        if (!title.trim() || !file) { toast.error("Add a title and choose a file"); return; }
-        setUploading(true);
-        try {
-            const form = new FormData();
-            form.append("file", file);
-            const uploadRes = await api.post("/notes/upload", form, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-
-            await api.post("/notes", {
-                title: title.trim(),
-                subject,
-                chapter: chapter.trim(),
-                note_type: noteType,
-                file_url: uploadRes.data.file_url,
-                file_type: uploadRes.data.file_type,
-            });
-            toast.success("Note uploaded!");
-            onUploaded();
-        } catch (e) {
-            toast.error(e.response?.data?.detail || "Upload failed — try again");
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative w-full max-w-md bg-[var(--card)] border border-[var(--border)] rounded-3xl p-6" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-5">
-                    <h2 className="font-heading text-xl font-bold text-[var(--text)]">Upload Note</h2>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)]"><X className="w-5 h-5" /></button>
-                </div>
-
-                <div className="space-y-3">
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (e.g. Cell Structure Notes)"
-                        className="input-base w-full text-sm" />
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <select value={subject} onChange={(e) => setSubject(e.target.value)} className="input-base text-sm">
-                            <option value="biology">Biology</option>
-                            <option value="physics">Physics</option>
-                            <option value="chemistry">Chemistry</option>
-                        </select>
-                        <select value={noteType} onChange={(e) => setNoteType(e.target.value)} className="input-base text-sm">
-                            <option value="notes">Chapter Notes</option>
-                            <option value="formula_sheet">Formula Sheet</option>
-                            <option value="revision">Quick Revision</option>
-                        </select>
-                    </div>
-
-                    <input value={chapter} onChange={(e) => setChapter(e.target.value)} placeholder="Chapter (optional)"
-                        className="input-base w-full text-sm" />
-
-                    <label className="block">
-                        <span className="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 block">File (PDF or image)</span>
-                        <input type="file" accept=".pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)}
-                            className="w-full text-sm text-[var(--text-secondary)]" />
-                    </label>
-
-                    <button onClick={submit} disabled={uploading} className="neon-btn w-full text-sm mt-2">
-                        {uploading ? "Uploading..." : "Upload Note"}
+            {imageViewer && (
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setImageViewer(null)}>
+                    <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                        <X className="w-5 h-5 text-white" />
                     </button>
+                    <img src={imageViewer} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
                 </div>
-            </div>
+            )}
         </div>
     );
 }
