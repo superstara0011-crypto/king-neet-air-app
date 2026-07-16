@@ -21,8 +21,9 @@ import Sidebar from "@/components/Sidebar";
 import Tracker from "@/pages/Tracker";
 import Mistakes from "@/pages/Mistakes";
 import Notes from "@/pages/Notes";
-import ComingSoon from "@/pages/ComingSoon";
+import ComingSoon from "./pages/ComingSoon";
 import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
+import DoubtSolving from "@/pages/DoubtSolving";
 
 function Protected({ children }) {
     const { user, loading } = useAuth();
