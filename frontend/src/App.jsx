@@ -21,7 +21,7 @@ import Sidebar from "@/components/Sidebar";
 import Tracker from "@/pages/Tracker";
 import Mistakes from "@/pages/Mistakes";
 import Notes from "@/pages/Notes";
-import ComingSoon from "@/pages/ComingSoon";
+import DoubtSolving from "@/pages/DoubtSolving";
 import LiveQuizAttempt, { LiveQuizList } from "@/pages/LiveQuiz";
 
 function Protected({ children }) {
@@ -77,7 +77,7 @@ function AppRouter() {
             <Route path="/mistakes" element={<Protected><Mistakes /></Protected>} />
             <Route path="/notes" element={<Protected><Notes /></Protected>} />
             <Route path="/revision" element={<Protected><ComingSoon title="Revision" /></Protected>} />
-            <Route path="/doubt-solving" element={<Protected><ComingSoon title="AI Doubt Solving" /></Protected>} />
+            <Route path="/doubt-solving" element={<Protected><DoubtSolving /></Protected>} />
             <Route path="/settings" element={<Protected><ComingSoon title="Settings" /></Protected>} />
             <Route path="/live-quiz" element={<Protected><LiveQuizList /></Protected>} />
             <Route path="/live-quiz/:id" element={<Protected><LiveQuizAttempt /></Protected>} />
