@@ -3,14 +3,15 @@ backend/routers/doubt.py
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AI Doubt Solving — King NEET AIR
 Students ask NEET (Bio/Physics/Chem) doubts, Gemini answers
-in a tutor-style voice. Reuses the same GEMINI_API_KEY already
-configured for admin question-generation. Daily per-user cap
+in a tutor-style voice. Calls Gemini's REST API directly via
+httpx (no extra package needed — same GEMINI_API_KEY already
+configured for admin question-generation). Daily per-user cap
 keeps API costs predictable.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 import os
 import uuid
-import google.generativeai as genai
+import httpx
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -20,7 +21,9 @@ from deps import require_user
 
 router = APIRouter(prefix="/doubt", tags=["doubt"])
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 SYSTEM_PROMPT = """You are a friendly, expert NEET tutor helping an Indian medical entrance
 exam aspirant with Biology, Physics, or Chemistry doubts.
@@ -39,6 +42,22 @@ class AskRequest(BaseModel):
     question: str
 
 
+async def call_gemini(question: str) -> str:
+    payload = {
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"role": "user", "parts": [{"text": question}]}],
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            GEMINI_URL,
+            params={"key": GEMINI_API_KEY},
+            json=payload,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+
 @router.post("/ask")
 async def ask_doubt(payload: AskRequest, request: Request):
     user = await require_user(request)
@@ -55,9 +74,7 @@ async def ask_doubt(payload: AskRequest, request: Request):
         )
 
     try:
-        model = genai.GenerativeModel(model_name="gemini-2.0-flash-lite", system_instruction=SYSTEM_PROMPT)
-        response = model.generate_content(question)
-        answer = response.text
+        answer = await call_gemini(question)
     except Exception:
         raise HTTPException(status_code=503, detail="AI is unavailable right now — try again in a bit")
 
