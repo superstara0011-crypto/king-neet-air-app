@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
     Loader2, CheckCircle2, Circle, XCircle, Calendar, Clock, Plus, Trash2,
     Flame, GripVertical, BookOpen, Target, ScrollText, ClipboardCheck, MoreHorizontal,
-    MoreVertical, Play, TrendingUp, ListChecks, Timer, ChevronLeft, ChevronRight,
+    MoreVertical, Play, Pause, TrendingUp, ListChecks, Timer, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -197,6 +197,7 @@ export default function Tracker() {
                         { id: "today", label: "Daily" },
                         { id: "week", label: "Weekly" },
                         { id: "progress", label: "Progress" },
+                        { id: "timer", label: "Timer" },
                         { id: "custom", label: "Custom" },
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setView(tab.id)}
@@ -209,7 +210,7 @@ export default function Tracker() {
                 </div>
             </div>
 
-            {(() => {
+            {view !== "timer" && (() => {
                 const weekTotal = week ? week.days.reduce((s, d) => s + d.total, 0) : 0;
                 const weekScore = week ? week.days.reduce((s, d) => s + d.score, 0) : 0;
                 const weekPct = weekTotal ? Math.round((weekScore / weekTotal) * 100) : 0;
@@ -232,6 +233,9 @@ export default function Tracker() {
             )}
             {view === "progress" && (
                 <ProgressView />
+            )}
+            {view === "timer" && (
+                <TimerView />
             )}
             {view === "custom" && (
                 <CustomView onSaved={() => { loadToday(); loadWeek(); }} />
@@ -398,6 +402,107 @@ function FocusMode() {
 
 // ─── PROGRESS VIEW — monthly calendar heatmap + streaks ─────────────────
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// ─── TIMER VIEW — per-subject stopwatch, only one runs at a time ───────
+const SUBJECT_META = {
+    physics: { label: "Physics", color: "#FF6B6B" },
+    chemistry: { label: "Chemistry", color: "#A78BFA" },
+    biology: { label: "Biology", color: "#4ADE80" },
+};
+
+function formatHMS(totalSeconds) {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+function TimerView() {
+    const [totals, setTotals] = useState({ physics: 0, chemistry: 0, biology: 0, other: 0 });
+    const [activeSubject, setActiveSubject] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState(false);
+
+    const loadToday = async () => {
+        try {
+            const r = await api.get("/study/today");
+            setTotals(r.data.totals);
+            setActiveSubject(r.data.active_subject);
+        } catch {
+            toast.error("Couldn't load timer data");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { loadToday(); }, []);
+
+    // Tick the active subject's displayed time locally every second —
+    // avoids hammering the backend just to keep the clock moving.
+    useEffect(() => {
+        if (!activeSubject) return;
+        const t = setInterval(() => {
+            setTotals(prev => ({ ...prev, [activeSubject]: (prev[activeSubject] || 0) + 1 }));
+        }, 1000);
+        return () => clearInterval(t);
+    }, [activeSubject]);
+
+    const toggle = async (subject) => {
+        if (busy) return;
+        setBusy(true);
+        try {
+            if (activeSubject === subject) {
+                await api.post("/study/pause");
+            } else {
+                await api.post("/study/start", { subject });
+            }
+            await loadToday(); // resync exact totals from server
+        } catch {
+            toast.error("Couldn't update timer");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    if (loading) return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 text-[var(--accent)] animate-spin" /></div>;
+
+    const totalToday = Object.values(totals).reduce((a, b) => a + b, 0);
+
+    return (
+        <div className="fade-up space-y-3">
+            <div className="glass-card p-5 mb-2 text-center">
+                <p className="text-xs uppercase tracking-widest font-bold text-[var(--text-muted)] mb-1">Today's Study Time</p>
+                <p className="font-mono text-3xl font-black" style={{ color: "var(--accent)" }}>{formatHMS(totalToday)}</p>
+            </div>
+
+            {Object.entries(SUBJECT_META).map(([key, meta]) => {
+                const isActive = activeSubject === key;
+                return (
+                    <div key={key} className="glass-card p-4 flex items-center gap-4">
+                        <button onClick={() => toggle(key)} disabled={busy}
+                            className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition disabled:opacity-50"
+                            style={{ background: isActive ? meta.color : meta.color + "22" }}>
+                            {isActive
+                                ? <Pause className="w-5 h-5" style={{ color: "#fff" }} fill="#fff" />
+                                : <Play className="w-5 h-5 ml-0.5" style={{ color: meta.color }} fill={meta.color} />
+                            }
+                        </button>
+                        <div className="flex-1">
+                            <div className="font-bold text-sm" style={{ color: "var(--text)" }}>{meta.label}</div>
+                            {isActive && <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: meta.color }}>Running</div>}
+                        </div>
+                        <div className="font-mono text-sm font-bold" style={{ color: "var(--text-secondary)" }}>
+                            {formatHMS(totals[key] || 0)}
+                        </div>
+                    </div>
+                );
+            })}
+
+            <p className="text-xs text-[var(--text-muted)] text-center pt-2">Only one subject runs at a time — starting another pauses this one.</p>
+        </div>
+    );
+}
 
 function ProgressView() {
     const now = new Date();

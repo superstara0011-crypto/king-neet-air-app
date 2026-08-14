@@ -6,6 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from routers import study_timer
 
 from database import client
 from services.questions import ensure_seed_questions
@@ -33,7 +34,7 @@ api_router.include_router(dashboard.router)
 api_router.include_router(tracker.router)
 api_router.include_router(notes.router)
 api_router.include_router(doubt.router)
-
+api_router.include_router(study_timer.router)
 
 @api_router.get("/")
 async def root():
