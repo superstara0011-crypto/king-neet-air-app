@@ -9,6 +9,7 @@ class User(BaseModel):
     name: str
     picture: Optional[str] = ""
     username: Optional[str] = None
+    password_hash: Optional[str] = None  # set only for email/password accounts; Google accounts leave this None
     total_xp: int = 0
     questions_answered: int = 0
     correct_answers: int = 0

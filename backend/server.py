@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import logging
 from fastapi import FastAPI, APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -10,7 +14,7 @@ from routers import study_timer
 
 from database import client
 from services.questions import ensure_seed_questions
-from routers import auth, questions, quiz, leaderboard, profile, admin, live_quiz, dashboard, tracker, notes, doubt
+from routers import auth, questions, quiz, leaderboard, profile, admin, live_quiz, dashboard, tracker, notes, doubt, email_auth
 
 # ── Rate limiting — protects against spam/brute-force on all endpoints ──────
 # Default: 100 requests/minute per IP across the whole API. Tighter limits
@@ -24,6 +28,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 api_router = APIRouter(prefix="/api")
 
 api_router.include_router(auth.router)
+api_router.include_router(email_auth.router)
 api_router.include_router(questions.router)
 api_router.include_router(quiz.router)
 api_router.include_router(leaderboard.router)
