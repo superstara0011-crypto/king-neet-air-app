@@ -478,7 +478,7 @@ export default function Landing() {
                     </p>
 
                     {/* ── PW-style Hero CTA ── */}
-                    <button onClick={() => nav("/login")} disabled={loginLoading}
+                    <button onClick={handleLogin} disabled={loginLoading}
                         className="flex items-center gap-3 px-8 py-4 rounded-xl font-black text-lg text-white mb-3 kna-pulse"
                         style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)", border: "none", cursor: "pointer", transition: "transform 0.2s" }}
                         onMouseEnter={e => !loginLoading && (e.currentTarget.style.transform = "scale(1.04)")}
@@ -487,7 +487,7 @@ export default function Landing() {
                             ? <div className="kna-spinner" />
                             : <GoogleSVG size={22} />
                         }
-                        {loginLoading ? "Connecting..." : "Continue with Google"}
+                        {loginLoading ? "Connecting..." : "Continue with Google — Free"}
                     </button>
 
                     {/* Trust line */}
